@@ -1,0 +1,11 @@
+syntax = "proto3";
+package network;
+
+message Message{
+    uint32     type        = 1;
+    uint64      to          = 2;
+    uint64      from        = 3;
+    uint64      term        = 4;
+    bytes       Data  = 5;
+    string      text = 6;
+}
