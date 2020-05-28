@@ -17,7 +17,10 @@
 
 package cache
 
-import "github.com/xp/shorttext-db/cmap"
+import (
+	"github.com/xp/shorttext-db/cmap"
+	"sync"
+)
 
 type entryU64 struct {
 	key   uint64
@@ -31,7 +34,7 @@ type cacheEntity cmap.ConcurrentMapU64
 // keys are uint64s and the values are interfaces.
 type CacheU64 struct {
 	entries map[uint64]*entryU64
-	//entries *cmap.ConcurrentMap
+	l       sync.RWMutex
 	size    int
 	onEvict func(key uint64, value interface{})
 	head    *entryU64
@@ -55,6 +58,9 @@ func NewU64(size int, onEvict func(key uint64, value interface{})) *CacheU64 {
 
 // Set a cache entry.
 func (c *CacheU64) Set(key uint64, value interface{}) {
+	c.l.Lock()
+	defer c.l.Unlock()
+
 	e := c.entries[key]
 	if e == nil {
 		e = &entryU64{key: key, value: value}
@@ -105,6 +111,8 @@ func (c *CacheU64) Len() int {
 
 // Get an entry from cache.
 func (c *CacheU64) Get(key uint64) interface{} {
+	c.l.RLock()
+	defer c.l.RUnlock()
 	e := c.entries[key]
 	if e == nil {
 		return nil
@@ -115,6 +123,9 @@ func (c *CacheU64) Get(key uint64) interface{} {
 
 // Delete an entry from cache.
 func (c *CacheU64) Delete(key uint64) {
+	c.l.Lock()
+	defer c.l.Unlock()
+
 	e := c.entries[key]
 	if e == nil {
 		return

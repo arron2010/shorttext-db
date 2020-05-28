@@ -8,8 +8,10 @@ package glogger
 
 import (
 	"com.neep/goplatform/glogger/logext"
+	"github.com/xp/shorttext-db/glogger/logstyle"
+
 	//"com.neep/goplatform/glogger/logext"
-	"com.neep/goplatform/glogger/logstyle"
+
 	"io"
 	"os"
 	"sync"

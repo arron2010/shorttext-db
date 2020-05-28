@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+
+package network;
+
+import  "message.proto";
+
+service StreamProxy{
+    rpc Send(BatchMessage)returns(BatchMessage){}
+}

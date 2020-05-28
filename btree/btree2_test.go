@@ -16,7 +16,7 @@ func createBTree1() *BTree {
 	mytree := New(2, "mytree")
 	//users := []Int{1,2,3,4,5,6,7,8}
 	//userItems :=items{}
-	for i := 1; i <= 6; i++ {
+	for i := 1; i <= 9; i++ {
 		//userItems.insertAt(i,users[i])
 		mytree.ReplaceOrInsert(Int(i))
 	}

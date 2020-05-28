@@ -15,7 +15,6 @@
 package network
 
 import (
-	"com.neep/goplatform/goraft/tlsutil"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -172,7 +171,7 @@ func (info TLSInfo) baseConfig() (*tls.Config, error) {
 		return nil, fmt.Errorf("KeyFile and CertFile must both be present[key: %v, cert: %v]", info.KeyFile, info.CertFile)
 	}
 
-	_, err := tlsutil.NewCert(info.CertFile, info.KeyFile, info.parseFunc)
+	_, err := NewCert(info.CertFile, info.KeyFile, info.parseFunc)
 	if err != nil {
 		return nil, err
 	}
@@ -202,10 +201,10 @@ func (info TLSInfo) baseConfig() (*tls.Config, error) {
 	// this only reloads certs when there's a client request
 	// TODO: support server-side refresh (e.g. inotify, SIGHUP), caching
 	cfg.GetCertificate = func(clientHello *tls.ClientHelloInfo) (*tls.Certificate, error) {
-		return tlsutil.NewCert(info.CertFile, info.KeyFile, info.parseFunc)
+		return NewCert(info.CertFile, info.KeyFile, info.parseFunc)
 	}
 	cfg.GetClientCertificate = func(unused *tls.CertificateRequestInfo) (*tls.Certificate, error) {
-		return tlsutil.NewCert(info.CertFile, info.KeyFile, info.parseFunc)
+		return NewCert(info.CertFile, info.KeyFile, info.parseFunc)
 	}
 	return cfg, nil
 }
@@ -236,7 +235,7 @@ func (info TLSInfo) ServerConfig() (*tls.Config, error) {
 
 	CAFiles := info.cafiles()
 	if len(CAFiles) > 0 {
-		cp, err := tlsutil.NewCertPool(CAFiles)
+		cp, err := NewCertPool(CAFiles)
 		if err != nil {
 			return nil, err
 		}
@@ -266,7 +265,7 @@ func (info TLSInfo) ClientConfig() (*tls.Config, error) {
 
 	CAFiles := info.cafiles()
 	if len(CAFiles) > 0 {
-		cfg.RootCAs, err = tlsutil.NewCertPool(CAFiles)
+		cfg.RootCAs, err = NewCertPool(CAFiles)
 		if err != nil {
 			return nil, err
 		}

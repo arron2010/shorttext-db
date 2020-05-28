@@ -3,6 +3,7 @@ package network
 import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
+	"github.com/xp/shorttext-db/glogger"
 	"github.com/xp/shorttext-db/version"
 	"io"
 	"io/ioutil"
@@ -166,4 +167,8 @@ func Marshal(pb proto.Message) ([]byte, error) {
 }
 func Unmarshal(pb proto.Message, data []byte) error {
 	return proto.Unmarshal(data, pb)
+}
+
+func SetLogLevel(level string) {
+	glogger.SetModuleLevel("network", level)
 }

@@ -19,7 +19,7 @@ const (
 )
 
 const (
-	HTTP_HEADER_FROM    = " X-Server-From"
+	HTTP_HEADER_FROM    = "X-Server-From"
 	HTTP_HEADER_TO      = "X-Server-To"
 	HTTP_HEADER_VERSION = "X-Server-Version"
 )
@@ -32,10 +32,11 @@ const (
 	// to keep the connection alive.
 	// For short term pipeline connections, the connection MUST be killed to avoid it being
 	// put back to http pkg connection pool.
-	ConnReadTimeout  = 3600 * time.Second
-	ConnWriteTimeout = 3600 * time.Second
+	ConnReadTimeout  = 60 * time.Second
+	ConnWriteTimeout = 60 * time.Second
 
 	recvBufSize = 4096
+
 	// maxPendingProposals holds the proposals during one leader election process.
 	// Generally one leader election takes at most 1 sec. It should have
 	// 0-2 election conflicts, and each one takes 0.5 sec.
@@ -43,6 +44,8 @@ const (
 	// One client blocks on its proposal for at least 1 sec, so 4096 is enough
 	// to hold all proposals.
 	maxPendingProposals = 4096
+
+	mqTimeout = 30
 
 	streamMsg   = "streamMsg"
 	pipelineMsg = "pipeline"
@@ -59,6 +62,8 @@ var (
 	errMemberRemoved         = fmt.Errorf("the member has been permanently removed from the cluster")
 	errMemberNotFound        = fmt.Errorf("member not found")
 	errUnsupportedStreamType = fmt.Errorf("unsupported stream type")
+	errMessageNotFound       = errors.New("message not found")
+	errMessageCountNotEnough = errors.New("message count not enough")
 )
 
 var (

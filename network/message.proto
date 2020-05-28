@@ -6,6 +6,16 @@ message Message{
     uint64      to          = 2;
     uint64      from        = 3;
     uint64      term        = 4;
-    bytes       Data  = 5;
-    string      text = 6;
+    uint64      index       = 5;
+    uint32      count       = 6;
+    bytes       Data  = 7;
+    string      text = 8;
+    uint32     ResultCode =9;
+
 }
+
+message BatchMessage{
+    uint64      term        = 1;
+    repeated Message Messages =2;
+}
+

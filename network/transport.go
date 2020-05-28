@@ -97,24 +97,7 @@ type Transport struct {
 }
 
 func (t *Transport) Start() error {
-	var err error
-	t.streamRt, err = newStreamRoundTripper(t.TLSInfo, t.DialTimeout)
-	if err != nil {
-		return err
-	}
-	t.pipelineRt, err = NewRoundTripper(t.TLSInfo, t.DialTimeout)
-	if err != nil {
-		return err
-	}
-	t.remotes = make(map[ID]*remote)
-	t.peers = make(map[ID]Peer)
 
-	// If client didn't provide dial retry frequency, use the default
-	// (100ms backoff between attempts to create a new stream),
-	// so it doesn't bring too much overhead when retry.
-	if t.DialRetryFrequency == 0 {
-		t.DialRetryFrequency = rate.Every(100 * time.Millisecond)
-	}
 	return nil
 }
 
@@ -249,9 +232,6 @@ func (t *Transport) AddPeer(id ID, us []string) {
 	}
 	//fs := t.LeaderStats.Follower(id.String())
 	t.peers[id] = startPeer(t, urls, id)
-
-	//addPeerToProber(t.pipelineProber, id.String(), us, RoundTripperNameSnapshot, rtts)
-	//addPeerToProber(t.streamProber, id.String(), us, RoundTripperNameRaftMessage, rtts)
 
 }
 

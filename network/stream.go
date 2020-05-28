@@ -58,23 +58,25 @@ type streamWriter struct {
 	closer  io.Closer
 	working bool
 
-	msgc  chan Message
-	connc chan *outgoingConn
-	stopc chan struct{}
-	done  chan struct{}
-	typ   streamType
+	msgc          chan Message
+	connc         chan *outgoingConn
+	stopc         chan struct{}
+	done          chan struct{}
+	typ           streamType
+	heartbeatTime time.Duration
 }
 
 func newStreamWriter(id ID, status *peerStatus, processor Processor, typ streamType) *streamWriter {
 	w := &streamWriter{
-		peerID:    id,
-		status:    status,
-		processor: processor,
-		msgc:      make(chan Message, streamBufSize),
-		connc:     make(chan *outgoingConn),
-		stopc:     make(chan struct{}),
-		done:      make(chan struct{}),
-		typ:       typ,
+		peerID:        id,
+		status:        status,
+		processor:     processor,
+		msgc:          make(chan Message, streamBufSize),
+		connc:         make(chan *outgoingConn),
+		stopc:         make(chan struct{}),
+		done:          make(chan struct{}),
+		typ:           typ,
+		heartbeatTime: 3 * time.Second,
 	}
 	return w
 }
@@ -96,7 +98,7 @@ func (cw *streamWriter) run() {
 		flusher    http.Flusher
 		batched    int
 	)
-	tickc := time.NewTicker(ConnReadTimeout / 2)
+	tickc := time.NewTicker(cw.heartbeatTime)
 	defer tickc.Stop()
 
 	//	logger.Infof("started streaming with peer [%s] (%s writer)\n", cw.peerID, cw.typ)
@@ -106,6 +108,7 @@ func (cw *streamWriter) run() {
 		case <-heartbeatc:
 			err := enc.encode(&linkHeartbeatMessage)
 			if err == nil {
+				//logger.Info("心跳--->",time.Now().Format("20060102-15:04:05"))
 				flusher.Flush()
 				batched = 0
 				continue
@@ -276,7 +279,7 @@ func (cr *streamReader) run() {
 			if err == errUnsupportedStreamType {
 				panic(fmt.Sprintf("节点版本存在不一致 连接URL:%s\n", url))
 			} else {
-				logger.Errorf("连接失败 URL:%s 错误:%s \n", url, err.Error())
+				//logger.Errorf("连接失败 URL:%s 错误:%s \n", url, err.Error())
 				cr.status.deactivate(failureType{source: t.String(), action: "dial"}, err.Error())
 			}
 		} else {
@@ -389,9 +392,9 @@ func (cr *streamReader) dial(t streamType) (io.ReadCloser, error) {
 		cr.picker.unreachable(u)
 		return nil, fmt.Errorf("failed to make http request to %v (%v)", u, err)
 	}
-	req.Header.Set(HTTP_HEADER_FROM, cr.tr.ID.String())
-	req.Header.Set(HTTP_HEADER_VERSION, ServerVersion)
 
+	req.Header.Set(HTTP_HEADER_VERSION, ServerVersion)
+	req.Header.Set(HTTP_HEADER_FROM, cr.tr.ID.String())
 	req.Header.Set(HTTP_HEADER_TO, cr.peerID.String())
 
 	setPeerURLsHeader(req, cr.tr.URLs)
@@ -410,7 +413,7 @@ func (cr *streamReader) dial(t streamType) (io.ReadCloser, error) {
 	resp, err := cr.tr.streamRt.RoundTrip(req)
 	if err != nil {
 		cr.picker.unreachable(u)
-		logger.Errorf("节点[%s]访问节点[%s %s]失败:%s\n", cr.peerID.String(), cr.tr.ID.String(), uu.String(), err.Error())
+		logger.Errorf("节点[%s]访问节点[%s ] URL[%s]失败:%s\n", cr.tr.ID.String(), cr.peerID.String(), uu.String(), err.Error())
 		return nil, err
 	}
 
