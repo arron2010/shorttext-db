@@ -14,27 +14,17 @@ type AsynCache struct {
 
 func NewMessageCache() *AsynCache {
 	m := &AsynCache{}
-	inner := cache.NewExpireCache(time.Second * 10)
+	inner := cache.NewExpireCache(mqTimeout / 2 * time.Second)
 	m.inner = inner
 	m.buffer = make(chan *Message)
 	go m.run()
 	return m
 }
 
-func NewBatchMessage(value *Message, cap int) *BatchMessage {
-	var batchMessage *BatchMessage
-	batchMessage = &BatchMessage{}
-	batchMessage.Term = value.Term
-	batchMessage.Messages = make([]*Message, 0, cap)
-	batchMessage.Messages = append(batchMessage.Messages, value)
-
-	return batchMessage
-}
-
 func (a *AsynCache) Put(value *Message) {
 	select {
 	case a.buffer <- value:
-		logger.Infof("消息推入缓存[Term:%d From:%d To:%d]\n", value.Term, value.From, value.To)
+		logger.Infof("消息推入通道[Term:%d From:%d To:%d]\n", value.Term, value.From, value.To)
 	}
 }
 
@@ -42,6 +32,7 @@ func (a *AsynCache) run() {
 	for {
 		select {
 		case value := <-a.buffer:
+			logger.Infof("消息从通道获取[Term:%d From:%d To:%d]\n", value.Term, value.From, value.To)
 			a.combine(value)
 		}
 	}
@@ -63,39 +54,6 @@ func (a *AsynCache) combine(value *Message) {
 	if uint32(len(batchMessage.Messages)) < value.Count {
 		batchMessage.Messages = append(batchMessage.Messages, value)
 	}
-}
-
-func (a *AsynCache) getBatchMessage(key uint64, count int, value *Message) (*BatchMessage, error) {
-	var batchMessage *BatchMessage
-	var ok bool
-	var obj interface{}
-
-	batchMessage, ok = a.inner.Get(value.Term).(*BatchMessage)
-	if batchMessage == nil || !ok {
-		batchMessage = NewBatchMessage(value, count)
-		a.inner.Set(value.Term, batchMessage)
-	} else {
-		if value.Term == key && count == len(batchMessage.Messages) {
-			logger.Debugf("缓存已经存在此消息 [Term:%d Count:%d]\n", key, count)
-			return batchMessage, nil
-		}
-		batchMessage.Messages = append(batchMessage.Messages, value)
-	}
-	obj = a.inner.Get(key)
-	if obj == nil {
-		logger.Errorf("未能从缓存获取消息对象[*BatchMessage] Value Term:%d, Key:%d\n", value.Term, key)
-		return nil, errMessageNotFound
-	}
-	batchMessage, ok = obj.(*BatchMessage)
-	if !ok {
-		return nil, errors.New(fmt.Sprintf("消息类型无法转换成*BatchMessage Term:%d\n", key))
-	}
-	logger.Debugf("消息实际数量:%d 预期数量:%d\n", len(batchMessage.Messages), count)
-	if ok && len(batchMessage.Messages) == count {
-		return batchMessage, nil
-	}
-
-	return nil, errMessageCountNotEnough
 }
 
 func (a *AsynCache) Get(key uint64, count int) (*BatchMessage, error) {
@@ -120,7 +78,7 @@ func (a *AsynCache) Get(key uint64, count int) (*BatchMessage, error) {
 			err = errors.New(fmt.Sprintf("消息类型无法转换成*BatchMessage [term:%d]\n", key))
 			break
 		}
-		logger.Debugf("消息实际数量:%d 预期数量:%d\n", len(batchMessage.Messages), count)
+		logger.Infof("消息实际数量:%d 预期数量:%d\n", len(batchMessage.Messages), count)
 		if len(batchMessage.Messages) == count {
 			break
 		}

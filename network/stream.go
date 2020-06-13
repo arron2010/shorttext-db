@@ -76,7 +76,7 @@ func newStreamWriter(id ID, status *peerStatus, processor Processor, typ streamT
 		stopc:         make(chan struct{}),
 		done:          make(chan struct{}),
 		typ:           typ,
-		heartbeatTime: 3 * time.Second,
+		heartbeatTime: PeerHeartbeatTime,
 	}
 	return w
 }

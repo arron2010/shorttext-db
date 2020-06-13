@@ -33,7 +33,7 @@ func NewStreamServer(id int, processor Processor, peers ...string) (*StreamServe
 		Processor: processor,
 		ErrorC:    make(chan error),
 	}
-	t.DialRetryFrequency = 0.2
+	t.DialRetryFrequency = DialRetryFrequency
 	t.DialTimeout = 15 * time.Second
 
 	var err error

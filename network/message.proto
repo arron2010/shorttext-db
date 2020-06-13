@@ -2,15 +2,17 @@ syntax = "proto3";
 package network;
 
 message Message{
-    uint32     type        = 1;
-    uint64      to          = 2;
-    uint64      from        = 3;
-    uint64      term        = 4;
-    uint64      index       = 5;
-    uint32      count       = 6;
+    uint32     Type        = 1;
+    uint64      To          = 2;
+    uint64      From        = 3;
+    uint64      Term        = 4;
+    uint64      Index       = 5;
+    uint32      Count       = 6;
     bytes       Data  = 7;
-    string      text = 8;
+    string      Text = 8;
     uint32     ResultCode =9;
+    string      Key =10;
+    string      DBName=11;
 
 }
 

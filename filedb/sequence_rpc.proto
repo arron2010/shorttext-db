@@ -1,0 +1,10 @@
+syntax = "proto3";
+package filedb;
+
+import  "sequence.proto";
+
+service Sequence{
+    rpc Next(SequenceMsg)returns(SequenceMsg){}
+    rpc Start(SequenceMsg)returns(SequenceMsg){}
+}
+

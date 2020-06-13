@@ -32,10 +32,11 @@ const (
 	// to keep the connection alive.
 	// For short term pipeline connections, the connection MUST be killed to avoid it being
 	// put back to http pkg connection pool.
-	ConnReadTimeout  = 60 * time.Second
-	ConnWriteTimeout = 60 * time.Second
-
-	recvBufSize = 4096
+	ConnReadTimeout    = 60 * time.Second
+	ConnWriteTimeout   = 60 * time.Second
+	PeerHeartbeatTime  = 3 * time.Second
+	DialRetryFrequency = 0.2
+	recvBufSize        = 4096
 
 	// maxPendingProposals holds the proposals during one leader election process.
 	// Generally one leader election takes at most 1 sec. It should have
