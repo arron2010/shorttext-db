@@ -31,9 +31,15 @@ func TestCreateCaseInfo(t *testing.T) {
 	configObj.KVTimeout = 120
 	configObj.KVServerAddr = "127.0.0.1:5009"
 	configObj.KVDBMaxRange = 3
-	configObj.KVDBRowCount = 15
+	configObj.KVDBRowCount = 5
 	configObj.SequenceServer = "127.0.0.1:7892"
 	configObj.KVDRowStart = 1
+	configObj.DictPath = "/opt/gopath/bin/dict/jieba.dict.utf8"
+	configObj.HmmPath = "/opt/gopath/bin/dict/hmm_model.utf8"
+	configObj.UserDictPath = "/opt/gopath/bin/dict/user.dict.utf8"
+	configObj.IdfPath = "/opt/gopath/bin/dict/idf.utf8"
+	configObj.StopWordsPath = "/opt/gopath/bin/dict/stop_words.utf8"
+
 	buff, _ := json.Marshal(configObj)
 	util.WriteFile(configPath, string(buff))
 

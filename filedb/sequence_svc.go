@@ -30,14 +30,14 @@ func StartSequenceService() {
 }
 
 func (s *SequenceService) Next(ctx context.Context, msg *SequenceMsg) (*SequenceMsg, error) {
-	next := s.seq.Next()
+	next := s.seq.Next(msg.Name)
 	logger.Info("生成序列值:", next)
 	return &SequenceMsg{Next: next}, nil
 
 }
 
 func (s *SequenceService) Start(ctx context.Context, msg *SequenceMsg) (*SequenceMsg, error) {
-	err := s.seq.SetStart(msg.Start)
+	err := s.seq.SetStart(msg.Name, msg.Start)
 	logger.Info("初始化序列值:", msg.Start)
 	return msg, err
 }
@@ -59,10 +59,10 @@ func NewSequenceProxy(addr string) (*SequenceProxy, error) {
 	return s, nil
 }
 
-func (s *SequenceProxy) Next() uint64 {
+func (s *SequenceProxy) Next(name string) uint64 {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
-	result, err := s.client.Next(ctx, &SequenceMsg{})
+	result, err := s.client.Next(ctx, &SequenceMsg{Name: name})
 	if err != nil {
 		logger.Error("获取自增序列失败", err)
 		return 0
@@ -70,11 +70,12 @@ func (s *SequenceProxy) Next() uint64 {
 	return result.Next
 }
 
-func (s *SequenceProxy) SetStart(val uint64) error {
+func (s *SequenceProxy) SetStart(name string, val uint64) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 	msg := &SequenceMsg{}
 	msg.Start = val
+	msg.Name = name
 	_, err := s.client.Start(ctx, msg)
 	return err
 }

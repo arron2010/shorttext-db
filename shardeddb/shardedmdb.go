@@ -1,129 +1,33 @@
 package shardeddb
 
 import (
-	"com.neep/goplatform/util"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/xp/shorttext-db/filedb"
 	"github.com/xp/shorttext-db/shardedkv"
 	"strconv"
+	"sync"
 
 	"github.com/xp/shorttext-db/config"
 	"github.com/xp/shorttext-db/glogger"
-	"github.com/xp/shorttext-db/memdb"
 	"github.com/xp/shorttext-db/network"
 	"github.com/xp/shorttext-db/network/proxy"
 	"github.com/xp/shorttext-db/utils"
-	"os"
 	"time"
 )
 
 var logger = glogger.MustGetLogger("shardeddb")
 
-//对内存数据库的封装,提供简易接口
-type memStorage struct {
-	name string
-	db   *memdb.DB
-	path string
-}
-
-func newMemStorage(id int, path string, name string) (*memStorage, error) {
-	m := &memStorage{}
-	m.name = name
-	m.path = path + "/" + strconv.Itoa(id) + "/" + m.name + ".db"
-	m.name = name
-	err := m.open()
-	if err != nil {
-		return nil, err
-	}
-	go m.autoPersistent()
-	return m, nil
-}
-
-func (m *memStorage) autoPersistent() {
-	heartbeat := time.NewTicker(time.Second * 3000)
-	defer heartbeat.Stop()
-	for range heartbeat.C {
-		m.save()
-	}
-}
-func (m *memStorage) open() error {
-	var err error
-	var fs *os.File
-	m.db, err = memdb.Open(":memory:")
-	if !util.IsExist(m.path) {
-		return nil
-	}
-	fs, err = os.Open(m.path)
-	if err != nil {
-		return err
-	}
-	err = m.db.Load(fs)
-	return err
-}
-
-func (m *memStorage) close() error {
-	return m.db.Close()
-}
-
-func (m *memStorage) save() error {
-	var (
-		err  error
-		file *os.File
-	)
-	file, err = os.Create(m.path)
-	defer file.Close()
-	if err != nil {
-		return err
-	}
-	err = m.db.Save(file)
-	if err != nil {
-		return err
-	}
-	return err
-}
-
-func (m *memStorage) get(key string) (string, error) {
-
-	var err error
-	var text string
-	err = m.db.View(func(tx *memdb.Tx) error {
-		text, err = tx.Get(key)
-		return err
-	})
-
-	return text, err
-}
-
-func (m *memStorage) set(key string, text string) error {
-	var err error
-
-	err = m.db.Update(func(tx *memdb.Tx) error {
-		_, _, err := tx.Set(key, text, nil)
-		return err
-	})
-	return err
-}
-
-func (m *memStorage) delete(key string) error {
-	err := m.db.Update(func(tx *memdb.Tx) error {
-		_, err := tx.Delete(key)
-		return err
-	})
-	return err
-}
-
 //流通道处理者
 type dbNodeHandler struct {
 	channel *network.StreamServer
-	dbs     map[string]*memStorage
+	dbs     map[string]IMemStorage
 }
 
 func newDBNodeHandler(id int, path string, names ...string) *dbNodeHandler {
 	d := &dbNodeHandler{}
-	d.dbs = make(map[string]*memStorage)
+	d.dbs = make(map[string]IMemStorage)
 	cf := config.GetConfig()
 	var i uint64
 	for _, name := range names {
@@ -152,6 +56,7 @@ func (d *dbNodeHandler) Process(ctx context.Context, m network.Message) error {
 	result.Term = m.Term
 	result.ResultCode = config.MSG_KV_RESULT_SUCCESS
 	result.Index = m.Index
+	result.Key = m.Key
 	if !ok {
 		result.ResultCode = config.MSG_KV_RESULT_FAILURE
 		errMsg = fmt.Sprintf("数据库实例[%s]不存在", m.DBName)
@@ -159,22 +64,25 @@ func (d *dbNodeHandler) Process(ctx context.Context, m network.Message) error {
 		d.channel.Send(result)
 		return errors.New(errMsg)
 	}
-	key := strconv.FormatUint(m.Index, 10)
+	key := m.Key
 
 	switch m.Type {
 	case config.MSG_KV_SET:
-		err = db.set(key, m.Text)
-		logger.Infof("数据库[%s]更新数据:[key:%d,text:%s]\n", m.DBName, m.Index, m.Text)
+		err = db.Set(key, m.Text)
+		logger.Infof("数据库[%s]更新数据:[key:%s,text:%s]\n", m.DBName, m.Key, m.Text)
+	case config.MSG_KV_TEXTSET:
+		err = db.SetWithPrefix(key, m.Text, config.MSG_KV_PREFIX_NAME)
+		logger.Infof("数据库[%s] 带前缀更新数据:[key:%s,text:%s]\n", m.DBName, m.Key, m.Text)
 
-	case config.MSG_KV_GET:
-		val, err = db.get(key)
-		logger.Infof("数据库[%s]获取数据:[key:%d,text:%s]\n", m.DBName, m.Index, val)
+	case config.MSG_KV_GET, config.MSG_KV_TEXTGET:
+		val, err = db.Get(key)
+		logger.Infof("数据库[%s]获取数据:[key:%s,text:%s]\n", m.DBName, m.Key, val)
 
 	case config.MSG_KV_DEL:
-		logger.Infof("数据库[%s]删除数据:[key:%d]\n", m.DBName, m.Index)
-		err = db.delete(key)
+		logger.Infof("数据库[%s]删除数据:[key:%s]\n", m.DBName, m.Key)
+		err = db.Delete(key)
 	case config.MSG_KV_ClOSE:
-		err = db.close()
+		err = db.Close()
 	default:
 		err = errors.New(fmt.Sprintf("数据库[%s]不支持该操作[%d]", m.DBName, m.Type))
 	}
@@ -192,9 +100,35 @@ func (d *dbNodeHandler) ReportUnreachable(id uint64) {
 
 }
 
+type IRegionDBNode interface {
+	FindText(prefix []string) []string
+}
+
 type DBNode struct {
 	channel *network.StreamServer
 	peers   []string
+	ID      int
+	dbs     map[string]IMemStorage
+}
+
+var dbNode *DBNode
+var once sync.Once
+
+func Start(remoting bool) {
+	once.Do(func() {
+		node, err := NewDBNode()
+		if err != nil {
+			panic(err)
+		}
+		if remoting {
+			node.Start()
+		}
+		logger.Infof("服务器[%d]启动成功！", node.ID)
+	})
+}
+
+func GetDBNode() *DBNode {
+	return dbNode
 }
 
 func NewDBNode() (*DBNode, error) {
@@ -208,9 +142,12 @@ func NewDBNode() (*DBNode, error) {
 	}
 	node := &DBNode{}
 	node.channel = channel
+	node.ID = id
 	processor.channel = channel
+	node.dbs = processor.dbs
 	return node, err
 }
+
 func NewProxyDBNode() (*DBNode, error) {
 	c := config.GetCase()
 	node := &DBNode{}
@@ -220,6 +157,11 @@ func NewProxyDBNode() (*DBNode, error) {
 func (d *DBNode) Start() {
 	d.channel.Start()
 }
+
+func (d *DBNode) GetMemStorage(dbName string) IMemStorage {
+	return d.dbs[dbName]
+}
+
 func (d *DBNode) StartProxy() {
 	c := config.GetCase()
 	go filedb.StartSequenceService()
@@ -244,8 +186,7 @@ func newDBNodeClient(id uint64, dbName string, client *proxy.StreamClient) *dbNo
 func (d *dbNodeClient) Open() error {
 	return nil
 }
-
-func (d *dbNodeClient) Get(key uint64, index uint64, item interface{}) (interface{}, error) {
+func (d *dbNodeClient) get(key string, index uint64, msgType uint32, item interface{}) (interface{}, error) {
 	var err error
 	var result *network.BatchMessage
 	term, err := d.generateId()
@@ -253,7 +194,7 @@ func (d *dbNodeClient) Get(key uint64, index uint64, item interface{}) (interfac
 		return nil, err
 	}
 	text := ""
-	m := network.NewOnlyOneMsg(term, key, text, config.MSG_KV_GET)
+	m := network.NewOnlyOneMsg(term, key, text, msgType)
 	m.Messages[0].From = config.GetCase().GetMaster().ID
 	m.Messages[0].To = d.Id
 	m.Messages[0].DBName = d.dbName + "_" + strconv.FormatUint(index, 10)
@@ -264,56 +205,66 @@ func (d *dbNodeClient) Get(key uint64, index uint64, item interface{}) (interfac
 	if result == nil || len(result.Messages) == 0 {
 		return nil, errors.New(fmt.Sprintf("dbNodeClient Get操作失败[Key:%s]", key))
 	}
-	buff := util.StringToBytes(result.Messages[0].Text)
-	err = json.Unmarshal(buff, item)
+	//buff := util.StringToBytes(result.Messages[0].Text)
+	//err = json.Unmarshal(buff, item)
+	item, err = deserialize(result.Messages[0].Text, item)
 	if err != nil {
 		return nil, err
 	}
 	return item, nil
 }
 
-func (d *dbNodeClient) generateId() (uint64, error) {
-
-	node, err := utils.NewNode(0)
-	if err != nil {
-		return 0, err
-	}
-	id := uint64(node.Generate().Int64())
-	return id, nil
-}
-func (d *dbNodeClient) Set(key uint64, index uint64, value interface{}) (error, uint64) {
+func (d *dbNodeClient) set(key string, index uint64, msgType uint32, value interface{}) (error, string) {
 	var result *network.BatchMessage
-	buff, err := json.Marshal(value)
+	text, err := serialize(value)
 	if err != nil {
-		return err, 0
+		return err, ""
 	}
-	text := util.BytesToString(buff)
+
 	term, err := d.generateId()
 	if err != nil {
-		return err, 0
+		return err, ""
 	}
-	m := network.NewOnlyOneMsg(term, key, text, config.MSG_KV_SET)
+	m := network.NewOnlyOneMsg(term, key, text, msgType)
 	m.Messages[0].From = config.GetCase().GetMaster().ID
 	m.Messages[0].To = d.Id
 	m.Messages[0].DBName = d.dbName + "_" + strconv.FormatUint(index, 10)
 
 	result, err = d.client.Send(m)
 	if err != nil {
-		return err, 0
+		return err, ""
 	}
 	if result == nil || len(result.Messages) == 0 {
-		return errors.New(fmt.Sprintf("dbNodeClient Set操作失败[Key:%s]", key)), 0
+		return errors.New(fmt.Sprintf("dbNodeClient Set操作失败[Key:%s]", key)), ""
 	}
 	resultMsg := result.Messages[0]
 
 	if resultMsg.ResultCode == config.MSG_KV_RESULT_FAILURE {
-		return errors.New(resultMsg.Text), 0
+		return errors.New(resultMsg.Text), ""
 	}
-	return nil, resultMsg.Index
-
+	return nil, resultMsg.Key
+}
+func (d *dbNodeClient) GetText(key string, index uint64) string {
+	text, err := d.get(key, index, config.MSG_KV_TEXTGET, nil)
+	if err != nil {
+		return ""
+	}
+	return text.(string)
 }
 
-func (d *dbNodeClient) Delete(key uint64, index uint64) error {
+func (d *dbNodeClient) SetText(key string, value string, index uint64) error {
+	err, _ := d.set(key, index, config.MSG_KV_TEXTSET, value)
+	return err
+}
+
+func (d *dbNodeClient) Get(key string, index uint64, item interface{}) (interface{}, error) {
+	return d.get(key, index, config.MSG_KV_GET, item)
+}
+func (d *dbNodeClient) Set(key string, index uint64, value interface{}) (error, string) {
+	return d.set(key, index, config.MSG_KV_SET, value)
+}
+
+func (d *dbNodeClient) Delete(key string, index uint64) error {
 	var err error
 	var result *network.BatchMessage
 
@@ -342,6 +293,16 @@ func (d *dbNodeClient) Delete(key uint64, index uint64) error {
 
 func (d *dbNodeClient) Close() error {
 	return nil
+}
+
+func (d *dbNodeClient) generateId() (uint64, error) {
+
+	node, err := utils.NewNode(0)
+	if err != nil {
+		return 0, err
+	}
+	id := uint64(node.Generate().Int64())
+	return id, nil
 }
 
 //func (d *dbNodeClient) ResetConnection(key uint64) error {
@@ -375,7 +336,7 @@ func newShards(dbName string) ([]shardedkv.Shard, error) {
 }
 
 //创建KV数据访问客户端
-func NewKVStore(dbName string) (*shardedkv.KVStore, error) {
+func NewKVStore(dbName string) (shardedkv.IKVStoreClient, error) {
 	cf := config.GetConfig()
 	shards, err := newShards(dbName)
 	if err != nil {
@@ -386,6 +347,6 @@ func NewKVStore(dbName string) (*shardedkv.KVStore, error) {
 	if err != nil {
 		return nil, err
 	}
-	kv := shardedkv.New(chooser, seq, shards)
+	kv := shardedkv.New(dbName, chooser, seq, shards)
 	return kv, err
 }

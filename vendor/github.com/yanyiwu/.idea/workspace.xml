@@ -1,0 +1,832 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="a8026791-9600-43c5-a887-40defe78e57d" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/gojieba/DictTrie.hpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gojieba/FullSegment.hpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gojieba/HMMModel.hpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gojieba/HMMSegment.hpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gojieba/Jieba.hpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gojieba/KeywordExtractor.hpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gojieba/MPSegment.hpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gojieba/MixSegment.hpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gojieba/PosTagger.hpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gojieba/PreFilter.hpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gojieba/QuerySegment.hpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gojieba/SegmentBase.hpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gojieba/SegmentTagged.hpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gojieba/TextRankExtractor.hpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gojieba/Trie.hpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gojieba/Unicode.hpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gojieba/example/main.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gojieba/limonp/ArgvContext.hpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gojieba/limonp/BlockingQueue.hpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gojieba/limonp/BoundedBlockingQueue.hpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gojieba/limonp/BoundedQueue.hpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gojieba/limonp/Closure.hpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gojieba/limonp/Colors.hpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gojieba/limonp/Condition.hpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gojieba/limonp/Config.hpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gojieba/limonp/FileLock.hpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gojieba/limonp/ForcePublic.hpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gojieba/limonp/LocalVector.hpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gojieba/limonp/Logging.hpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gojieba/limonp/Md5.hpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gojieba/limonp/MutexLock.hpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gojieba/limonp/NonCopyable.hpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gojieba/limonp/StdExtension.hpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gojieba/limonp/StringUtil.hpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gojieba/limonp/Thread.hpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/gojieba/limonp/ThreadPool.hpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gojieba/deps/cppjieba/DictTrie.hpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gojieba/deps/cppjieba/FullSegment.hpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gojieba/deps/cppjieba/HMMModel.hpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gojieba/deps/cppjieba/HMMSegment.hpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gojieba/deps/cppjieba/Jieba.hpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gojieba/deps/cppjieba/KeywordExtractor.hpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gojieba/deps/cppjieba/MPSegment.hpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gojieba/deps/cppjieba/MixSegment.hpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gojieba/deps/cppjieba/PosTagger.hpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gojieba/deps/cppjieba/PreFilter.hpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gojieba/deps/cppjieba/QuerySegment.hpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gojieba/deps/cppjieba/SegmentBase.hpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gojieba/deps/cppjieba/SegmentTagged.hpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gojieba/deps/cppjieba/TextRankExtractor.hpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gojieba/deps/cppjieba/Trie.hpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gojieba/deps/cppjieba/Unicode.hpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gojieba/deps/limonp/ArgvContext.hpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gojieba/deps/limonp/BlockingQueue.hpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gojieba/deps/limonp/BoundedBlockingQueue.hpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gojieba/deps/limonp/BoundedQueue.hpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gojieba/deps/limonp/Closure.hpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gojieba/deps/limonp/Colors.hpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gojieba/deps/limonp/Condition.hpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gojieba/deps/limonp/Config.hpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gojieba/deps/limonp/FileLock.hpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gojieba/deps/limonp/ForcePublic.hpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gojieba/deps/limonp/LocalVector.hpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gojieba/deps/limonp/Logging.hpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gojieba/deps/limonp/Md5.hpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gojieba/deps/limonp/MutexLock.hpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gojieba/deps/limonp/NonCopyable.hpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gojieba/deps/limonp/StdExtension.hpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gojieba/deps/limonp/StringUtil.hpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gojieba/deps/limonp/Thread.hpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gojieba/deps/limonp/ThreadPool.hpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/gojieba/dict/stop_words.utf8" beforeDir="false" afterPath="$PROJECT_DIR$/gojieba/dict/stop_words.utf8" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gojieba/jieba.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/gojieba/jieba.cpp" afterDir="false" />
+    </list>
+    <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FUSProjectUsageTrigger">
+    <session id="-1573234456">
+      <usages-collector id="statistics.lifecycle.project">
+        <counts>
+          <entry key="project.open.time.1" value="1" />
+          <entry key="project.opened" value="1" />
+        </counts>
+      </usages-collector>
+      <usages-collector id="statistics.file.extensions.open">
+        <counts>
+          <entry key="LICENSE" value="1" />
+          <entry key="c" value="3" />
+          <entry key="cpp" value="3" />
+          <entry key="gitignore" value="1" />
+          <entry key="go" value="6" />
+          <entry key="h" value="4" />
+          <entry key="hpp" value="55" />
+          <entry key="md" value="1" />
+          <entry key="s" value="1" />
+          <entry key="utf8" value="1" />
+        </counts>
+      </usages-collector>
+      <usages-collector id="statistics.file.types.open">
+        <counts>
+          <entry key="C++" value="65" />
+          <entry key="Go" value="6" />
+          <entry key="Markdown" value="1" />
+          <entry key="PLAIN_TEXT" value="3" />
+          <entry key="x86 Plan9 Assembly" value="1" />
+        </counts>
+      </usages-collector>
+      <usages-collector id="statistics.file.extensions.edit">
+        <counts>
+          <entry key="cpp" value="14" />
+          <entry key="go" value="68" />
+          <entry key="hpp" value="34" />
+        </counts>
+      </usages-collector>
+      <usages-collector id="statistics.file.types.edit">
+        <counts>
+          <entry key="C++" value="48" />
+          <entry key="Go" value="68" />
+        </counts>
+      </usages-collector>
+    </session>
+  </component>
+  <component name="FavoritesManager">
+    <favorites_list name="yanyiwu" />
+  </component>
+  <component name="FileEditorManager">
+    <leaf>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/gojieba/limonp/MutexLock.hpp">
+          <provider selected="true" editor-type-id="text-editor" />
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/gojieba/limonp/ForcePublic.hpp">
+          <provider selected="true" editor-type-id="text-editor" />
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/gojieba/limonp/Config.hpp">
+          <provider selected="true" editor-type-id="text-editor" />
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/gojieba/limonp/Md5.hpp">
+          <provider selected="true" editor-type-id="text-editor" />
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/gojieba/limonp/NonCopyable.hpp">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="400">
+              <caret line="16" column="23" selection-start-line="16" selection-start-column="23" selection-end-line="16" selection-end-column="23" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/gojieba/limonp/Logging.hpp">
+          <provider selected="true" editor-type-id="text-editor" />
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/gojieba/limonp/StringUtil.hpp">
+          <provider selected="true" editor-type-id="text-editor" />
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/gojieba/limonp/Condition.hpp">
+          <provider selected="true" editor-type-id="text-editor" />
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/gojieba/limonp/FileLock.hpp">
+          <provider selected="true" editor-type-id="text-editor" />
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/gojieba/limonp/LocalVector.hpp">
+          <provider selected="true" editor-type-id="text-editor" />
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/gojieba/LICENSE">
+          <provider selected="true" editor-type-id="text-editor" />
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/gojieba/README_EN.md">
+          <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
+            <state split_layout="SPLIT">
+              <first_editor />
+              <second_editor>
+                <markdownNavigatorState />
+              </second_editor>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/gojieba/limonp/ArgvContext.hpp">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="275">
+              <caret line="11" selection-start-line="11" selection-end-line="11" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/gojieba/config.go">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="350">
+              <caret line="17" column="41" lean-forward="true" selection-start-line="17" selection-start-column="41" selection-end-line="17" selection-end-column="41" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/gojieba/util.go">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="175">
+              <caret line="11" column="36" selection-start-line="11" selection-start-column="36" selection-end-line="11" selection-end-column="36" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/gojieba/jieba.go">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="121">
+              <caret line="5" column="10" selection-start-line="5" selection-start-column="10" selection-end-line="5" selection-end-column="10" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/gojieba/jieba.cpp">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="350">
+              <caret line="14" column="1" lean-forward="true" selection-start-line="14" selection-start-column="1" selection-end-line="14" selection-end-column="1" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/gojieba/SegmentTagged.hpp">
+          <provider selected="true" editor-type-id="text-editor" />
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/gojieba/Trie.hpp">
+          <provider selected="true" editor-type-id="text-editor" />
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/gojieba/Unicode.hpp">
+          <provider selected="true" editor-type-id="text-editor" />
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/gojieba/util.c">
+          <provider selected="true" editor-type-id="text-editor" />
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/gojieba/DictTrie.hpp">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="325">
+              <caret line="13" column="23" lean-forward="true" selection-start-line="13" selection-start-column="23" selection-end-line="13" selection-end-column="23" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/gojieba/.gitignore">
+          <provider selected="true" editor-type-id="text-editor" />
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/gojieba/jieba_test.go">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="275">
+              <caret line="16" selection-start-line="16" selection-end-line="16" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/gojieba/example/main.go">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="161">
+              <caret line="24" selection-start-line="24" selection-end-line="24" />
+              <folding>
+                <element signature="e#14#42#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/../../../../go/src/runtime/asm_amd64.s">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="195">
+              <caret line="1338" column="38" lean-forward="true" selection-start-line="1338" selection-start-column="38" selection-end-line="1338" selection-end-column="38" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/gojieba/PosTagger.hpp">
+          <provider selected="true" editor-type-id="text-editor" />
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/gojieba/SegmentBase.hpp">
+          <provider selected="true" editor-type-id="text-editor" />
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/gojieba/Jieba.hpp">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="425">
+              <caret line="17" column="27" selection-start-line="17" selection-start-column="27" selection-end-line="17" selection-end-column="27" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/gojieba/KeywordExtractor.hpp">
+          <provider selected="true" editor-type-id="text-editor" />
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/gojieba/MPSegment.hpp">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="425">
+              <caret line="20" column="22" lean-forward="true" selection-start-line="20" selection-start-column="22" selection-end-line="20" selection-end-column="22" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/gojieba/HMMModel.hpp">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="-1550">
+              <caret line="10" lean-forward="true" selection-start-line="10" selection-end-line="10" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/gojieba/FullSegment.hpp">
+          <provider selected="true" editor-type-id="text-editor" />
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/gojieba/HMMSegment.hpp">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="763">
+              <caret line="105" column="34" lean-forward="true" selection-start-line="105" selection-start-column="34" selection-end-line="105" selection-end-column="45" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/gojieba/dict/user.dict.utf8">
+          <provider selected="true" editor-type-id="text-editor" />
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/gojieba/bleve/bleve_test.go">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="225">
+              <caret line="85" selection-start-line="85" selection-end-line="85" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+    </leaf>
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Go File" />
+      </list>
+    </option>
+  </component>
+  <component name="FindInProjectRecents">
+    <findStrings>
+      <find>Cut</find>
+      <find>InternalCut</find>
+      <find>SequentialLetterRule</find>
+    </findStrings>
+  </component>
+  <component name="GOROOT" path="$PROJECT_DIR$/../../../../go" />
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/gojieba" />
+  </component>
+  <component name="IdeDocumentHistory">
+    <option name="CHANGED_PATHS">
+      <list>
+        <option value="$PROJECT_DIR$/gojieba/main.go" />
+        <option value="$PROJECT_DIR$/gojieba/cppjieba/HMMSegment.hpp" />
+        <option value="$PROJECT_DIR$/gojieba/cppjieba2/HMMSegment.hpp" />
+        <option value="$PROJECT_DIR$/gojieba/cppjieba2/Jieba.hpp" />
+        <option value="$PROJECT_DIR$/gojieba/jieba.cpp" />
+        <option value="$PROJECT_DIR$/gojieba/jieba.go" />
+        <option value="$PROJECT_DIR$/gojieba/util.go" />
+        <option value="$PROJECT_DIR$/gojieba/HMMSegment.hpp" />
+        <option value="$PROJECT_DIR$/gojieba/example/main.go" />
+      </list>
+    </option>
+  </component>
+  <component name="JsBuildToolGruntFileManager" detection-done="true" sorting="DEFINITION_ORDER" />
+  <component name="JsBuildToolPackageJson" detection-done="true" sorting="DEFINITION_ORDER" />
+  <component name="JsGulpfileManager">
+    <detection-done>true</detection-done>
+    <sorting>DEFINITION_ORDER</sorting>
+  </component>
+  <component name="ProjectFrameBounds" extendedState="6">
+    <option name="x" value="67" />
+    <option name="y" value="27" />
+    <option name="width" value="632" />
+    <option name="height" value="708" />
+  </component>
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
+  <component name="ProjectView">
+    <navigator proportions="" version="1">
+      <foldersAlwaysOnTop value="true" />
+    </navigator>
+    <panes>
+      <pane id="ProjectPane">
+        <subPane>
+          <expand>
+            <path>
+              <item name="yanyiwu" type="b2602c69:ProjectViewProjectNode" />
+              <item name="yanyiwu" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="yanyiwu" type="b2602c69:ProjectViewProjectNode" />
+              <item name="yanyiwu" type="462c0819:PsiDirectoryNode" />
+              <item name="gojieba" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="yanyiwu" type="b2602c69:ProjectViewProjectNode" />
+              <item name="yanyiwu" type="462c0819:PsiDirectoryNode" />
+              <item name="gojieba" type="462c0819:PsiDirectoryNode" />
+              <item name="example" type="462c0819:PsiDirectoryNode" />
+            </path>
+          </expand>
+          <select />
+        </subPane>
+      </pane>
+      <pane id="Scope" />
+    </panes>
+  </component>
+  <component name="PropertiesComponent">
+    <property name="DefaultGoTemplateProperty" value="Go File" />
+    <property name="go.gopath.indexing.explicitly.defined" value="true" />
+    <property name="go.sdk.automatically.set" value="true" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+    <property name="nodejs_interpreter_path.stuck_in_default_project" value="undefined stuck path" />
+    <property name="nodejs_npm_path_reset_for_default_project" value="true" />
+    <property name="settings.editor.selected.configurable" value="editor.preferences.gutterIcons" />
+  </component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/gojieba" />
+      <recent name="$PROJECT_DIR$/gojieba/cppjieba" />
+      <recent name="$PROJECT_DIR$" />
+    </key>
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/gojieba/example" />
+      <recent name="$PROJECT_DIR$/gojieba" />
+    </key>
+  </component>
+  <component name="RunDashboard">
+    <option name="ruleStates">
+      <list>
+        <RuleState>
+          <option name="name" value="ConfigurationTypeDashboardGroupingRule" />
+        </RuleState>
+        <RuleState>
+          <option name="name" value="StatusDashboardGroupingRule" />
+        </RuleState>
+      </list>
+    </option>
+  </component>
+  <component name="RunManager" selected="Go Build.go build main.go">
+    <configuration name="go build main.go" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
+      <module name="yanyiwu" />
+      <working_directory value="$PROJECT_DIR$/" />
+      <kind value="FILE" />
+      <filePath value="$PROJECT_DIR$/gojieba/example/main.go" />
+      <package value="github.com/yanyiwu" />
+      <directory value="$PROJECT_DIR$/" />
+      <method v="2" />
+    </configuration>
+    <configuration name="ExampleJieba in github.com/yanyiwu/gojieba" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="yanyiwu" />
+      <working_directory value="$PROJECT_DIR$/gojieba" />
+      <framework value="gotest" />
+      <kind value="PACKAGE" />
+      <package value="github.com/yanyiwu/gojieba" />
+      <directory value="$PROJECT_DIR$/" />
+      <filePath value="$PROJECT_DIR$/" />
+      <pattern value="^ExampleJieba$" />
+      <method v="2" />
+    </configuration>
+    <list>
+      <item itemvalue="Go Test.ExampleJieba in github.com/yanyiwu/gojieba" />
+      <item itemvalue="Go Build.go build main.go" />
+    </list>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Go Build.go build main.go" />
+        <item itemvalue="Go Test.ExampleJieba in github.com/yanyiwu/gojieba" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="TestHistory">
+    <history-entry file="ExampleJieba_in_github_com_yanyiwu_gojieba - 2019.09.27 at 09h 16m 05s.xml">
+      <configuration name="ExampleJieba in github.com/yanyiwu/gojieba" configurationId="GoTestRunConfiguration" />
+    </history-entry>
+  </component>
+  <component name="ToolWindowManager">
+    <frame x="67" y="25" width="1849" height="929" extended-state="6" />
+    <editor active="true" />
+    <layout>
+      <window_info id="Favorites" sideWeight="0.501292" side_tool="true" weight="0.24958402" />
+      <window_info content_ui="combo" id="Project" order="0" sideWeight="0.498708" visible="true" weight="0.24958402" />
+      <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
+      <window_info anchor="bottom" id="Database Changes" show_stripe_button="false" />
+      <window_info anchor="bottom" id="Version Control" show_stripe_button="false" />
+      <window_info anchor="bottom" id="Terminal" />
+      <window_info anchor="bottom" id="Event Log" side_tool="true" />
+      <window_info anchor="bottom" id="Message" order="0" />
+      <window_info anchor="bottom" id="Find" order="1" />
+      <window_info anchor="bottom" id="Run" order="2" weight="0.45865634" />
+      <window_info active="true" anchor="bottom" id="Debug" order="3" visible="true" weight="0.39922482" />
+      <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
+      <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
+      <window_info anchor="bottom" id="TODO" order="6" />
+      <window_info anchor="right" id="Database" />
+      <window_info anchor="right" id="Commander" internal_type="SLIDING" order="0" type="SLIDING" weight="0.4" />
+      <window_info anchor="right" id="Ant Build" order="1" weight="0.25" />
+      <window_info anchor="right" content_ui="combo" id="Hierarchy" order="2" weight="0.25" />
+    </layout>
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="1" />
+  </component>
+  <component name="VcsContentAnnotationSettings">
+    <option name="myLimit" value="2678400000" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/gojieba/example/main.go</url>
+          <line>16</line>
+          <properties />
+          <option name="timeStamp" value="3" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
+  </component>
+  <component name="editorHistoryManager">
+    <entry file="file://$PROJECT_DIR$/gojieba/limonp/NonCopyable.hpp">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="400">
+          <caret line="16" column="23" selection-start-line="16" selection-start-column="23" selection-end-line="16" selection-end-column="23" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/limonp/Condition.hpp">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/limonp/FileLock.hpp">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/limonp/LocalVector.hpp">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/limonp/Config.hpp">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/limonp/Logging.hpp">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/limonp/StringUtil.hpp">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/LICENSE">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/README_EN.md">
+      <provider selected="true" editor-type-id="split-provider[text-editor;MarkdownPreviewEditor]">
+        <state split_layout="SPLIT">
+          <first_editor />
+          <second_editor>
+            <markdownNavigatorState />
+          </second_editor>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/DictTrie.hpp">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/QuerySegment.hpp">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/cppjieba/Trie.hpp">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="325">
+          <caret line="13" selection-start-line="13" selection-end-line="13" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/cppjieba/TextRankExtractor.hpp">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/cppjieba/SegmentTagged.hpp">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/cppjieba/SegmentBase.hpp">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/cppjieba/QuerySegment.hpp">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/cppjieba/PreFilter.hpp">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/cppjieba/MPSegment.hpp">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="225">
+          <caret line="9" column="19" selection-start-line="9" selection-start-column="10" selection-end-line="9" selection-end-column="19" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/cppjieba/MixSegment.hpp">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/cppjieba/Unicode.hpp">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="325">
+          <caret line="13" column="13" selection-start-line="13" selection-start-column="13" selection-end-line="13" selection-end-column="13" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/cppjieba/PosTagger.hpp">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="300">
+          <caret line="12" column="37" selection-start-line="12" selection-start-column="37" selection-end-line="12" selection-end-column="37" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/jieba.h">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="450">
+          <caret line="18" column="13" selection-start-line="18" selection-start-column="13" selection-end-line="18" selection-end-column="13" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/util.h">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/limonp/MutexLock.hpp">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/cppjieba/DictTrie.hpp">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="300">
+          <caret line="12" column="27" selection-start-line="12" selection-start-column="17" selection-end-line="12" selection-end-column="27" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/cppjieba/util.c">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/cppjieba/Jieba.hpp">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="775">
+          <caret line="31" column="6" selection-start-line="31" selection-start-column="6" selection-end-line="31" selection-end-column="6" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/cppjieba/FullSegment.hpp">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="300">
+          <caret line="12" column="37" selection-start-line="12" selection-start-column="37" selection-end-line="12" selection-end-column="37" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/cppjieba/jieba.h">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/cppjieba/jieba.cpp">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="100">
+          <caret line="4" column="11" selection-start-line="4" selection-start-column="11" selection-end-line="4" selection-end-column="11" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/cppjieba/util.h">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="150">
+          <caret line="6" selection-start-line="6" selection-end-line="6" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/jieba.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="121">
+          <caret line="5" column="10" selection-start-line="5" selection-start-column="10" selection-end-line="5" selection-end-column="10" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/SegmentTagged.hpp">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/Trie.hpp">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/Unicode.hpp">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/util.c">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/util.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="175">
+          <caret line="11" column="36" selection-start-line="11" selection-start-column="36" selection-end-line="11" selection-end-column="36" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/jieba_test.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="275">
+          <caret line="16" selection-start-line="16" selection-end-line="16" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/PosTagger.hpp">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/SegmentBase.hpp">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/Jieba.hpp">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="425">
+          <caret line="17" column="27" selection-start-line="17" selection-start-column="27" selection-end-line="17" selection-end-column="27" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/KeywordExtractor.hpp">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/MPSegment.hpp">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="425">
+          <caret line="20" column="22" lean-forward="true" selection-start-line="20" selection-start-column="22" selection-end-line="20" selection-end-column="22" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/FullSegment.hpp">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/DictTrie.hpp">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="325">
+          <caret line="13" column="23" lean-forward="true" selection-start-line="13" selection-start-column="23" selection-end-line="13" selection-end-column="23" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/HMMModel.hpp">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="-1550">
+          <caret line="10" lean-forward="true" selection-start-line="10" selection-end-line="10" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/jieba.cpp">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="350">
+          <caret line="14" column="1" lean-forward="true" selection-start-line="14" selection-start-column="1" selection-end-line="14" selection-end-column="1" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/config.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="350">
+          <caret line="17" column="41" lean-forward="true" selection-start-line="17" selection-start-column="41" selection-end-line="17" selection-end-column="41" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/HMMSegment.hpp">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="763">
+          <caret line="105" column="34" lean-forward="true" selection-start-line="105" selection-start-column="34" selection-end-line="105" selection-end-column="45" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gojieba/example/main.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="161">
+          <caret line="24" selection-start-line="24" selection-end-line="24" />
+          <folding>
+            <element signature="e#14#42#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/../../../../go/src/runtime/asm_amd64.s">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="195">
+          <caret line="1338" column="38" lean-forward="true" selection-start-line="1338" selection-start-column="38" selection-end-line="1338" selection-end-column="38" />
+        </state>
+      </provider>
+    </entry>
+  </component>
+</project>

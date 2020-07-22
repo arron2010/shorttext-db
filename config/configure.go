@@ -26,7 +26,7 @@ func LoadSettings(cpath string) {
 		}
 		configInfo = &Config{}
 		bytes, err := ioutil.ReadFile(configPath)
-		logger.Infof("服务器配置信息：%s\n", string(bytes))
+		//logger.Infof("服务器配置信息：%s\n", string(bytes))
 
 		if err != nil {
 			panic(err)
@@ -52,34 +52,40 @@ func LoadSettings(cpath string) {
 //KV数据库节点代理服务器简称代理服务器
 type Config struct {
 	//集群服务器配置文件路径
-	KVCasePath string
+	KVCasePath string `json:"KVCasePath"`
 
 	//代理服务器地址
-	KVServerAddr string
+	KVServerAddr string `json:"KVServerAddr"`
 
 	//代理服务器GRPC连接和调用超时时长
-	KVTimeout int64
+	KVTimeout int64 `json:"KVTimeout"`
 
 	//代理服务器GRPC连接空闲时间
-	KVIdleTimeout int64
+	KVIdleTimeout int64 `json:"KVIdleTimeout"`
 
 	//KV数据库文件路径
-	KVDBFilePath string
+	KVDBFilePath string `json:"KVDBFilePath"`
 
 	//KV数据库名字
-	KVDBNames []string
+	KVDBNames []string `json:"KVDBNames"`
 
 	//同一个KV数据库的分库数量
-	KVDBMaxRange int64
+	KVDBMaxRange int64 `json:"KVDBMaxRange"`
 
 	//KV数据节点存储记录数量
-	KVDBRowCount int64
+	KVDBRowCount int64 `json:"KVDBRowCount"`
 
 	//KV数据节点范围分区起始值
-	KVDRowStart int64
+	KVDRowStart int64 `json:"KVDRowStart"`
 
 	//序列服务器地址
-	SequenceServer string
+	SequenceServer string `json:"SequenceServer"`
+
+	DictPath      string `json:"DictPath"`
+	HmmPath       string `json:"HmmPath"`
+	UserDictPath  string `json:"UserDictPath"`
+	IdfPath       string `json:"IdfPath"`
+	StopWordsPath string `json:"StopWordsPath"`
 }
 
 func GetConfig() *Config {

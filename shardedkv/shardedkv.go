@@ -3,6 +3,7 @@ package shardedkv
 import (
 	"github.com/xp/shorttext-db/filedb"
 	"github.com/xp/shorttext-db/glogger"
+	"strconv"
 	"sync"
 )
 
@@ -14,15 +15,27 @@ type Object interface{}
 type Storage interface {
 	Open() error
 
-	Get(key uint64, index uint64, item interface{}) (interface{}, error)
+	Get(key string, index uint64, item interface{}) (interface{}, error)
 
-	Set(key uint64, index uint64, value interface{}) (error, uint64)
+	Set(key string, index uint64, value interface{}) (error, string)
 
-	Delete(key uint64, index uint64) error
+	Delete(key string, index uint64) error
 
 	//ResetConnection(key uint64) error
 
+	GetText(key string, index uint64) string
+
+	SetText(key string, value string, index uint64) error
+
 	Close() error
+}
+
+type IKVStoreClient interface {
+	Get(nKey uint64, item interface{}) (interface{}, error)
+	Set(nKey uint64, val interface{}) (error, uint64)
+
+	SetText(nKey uint64, val string) error
+	GetText(nKey uint64) string
 }
 
 type KVStore struct {
@@ -30,6 +43,7 @@ type KVStore struct {
 	storages  map[string]Storage
 	seq       filedb.SequenceSvc
 	mu        sync.RWMutex
+	name      string
 }
 
 //分片选择器
@@ -115,7 +129,7 @@ type Shard struct {
 	Backend Storage
 }
 
-func New(chooser Chooser, seq filedb.SequenceSvc, shards []Shard) *KVStore {
+func New(name string, chooser Chooser, seq filedb.SequenceSvc, shards []Shard) IKVStoreClient {
 	var buckets []string
 	kv := &KVStore{
 		continuum: chooser,
@@ -127,45 +141,75 @@ func New(chooser Chooser, seq filedb.SequenceSvc, shards []Shard) *KVStore {
 	}
 	chooser.SetBuckets(buckets)
 	kv.seq = seq
+	kv.name = name
 	return kv
 }
 
-func (kv *KVStore) Get(key uint64, item interface{}) (interface{}, error) {
+func (kv *KVStore) Get(nKey uint64, item interface{}) (interface{}, error) {
 
 	var storage Storage
-
 	kv.mu.Lock()
-	shard, index := kv.continuum.Choose(key)
+	shard, index := kv.continuum.Choose(nKey)
 	storage = kv.storages[shard]
 	kv.mu.Unlock()
-
+	key := strconv.FormatUint(nKey, 10)
 	return storage.Get(key, index, item)
 }
 
-func (kv *KVStore) Set(key uint64, val interface{}) (error, uint64) {
-
-	var storage Storage
-	kv.mu.Lock()
-	if key == 0 {
-		key = kv.seq.Next()
-	}
-	shard, index := kv.continuum.Choose(key)
-	storage = kv.storages[shard]
-
-	kv.mu.Unlock()
-
-	return storage.Set(key, index, val)
+func (kv *KVStore) Next() uint64 {
+	return kv.seq.Next(kv.name)
 }
 
-func (kv *KVStore) Delete(key uint64) error {
+func (kv *KVStore) IniSeq(val uint64) {
+	kv.seq.SetStart(kv.name, val)
+}
 
+func (kv *KVStore) Set(nKey uint64, val interface{}) (error, uint64) {
 	var storage Storage
+
 	kv.mu.Lock()
-	shard, index := kv.continuum.Choose(key)
+	if nKey == 0 {
+		nKey = kv.seq.Next(kv.name)
+	}
+	key := strconv.FormatUint(nKey, 10)
+	shard, index := kv.continuum.Choose(nKey)
 	storage = kv.storages[shard]
 	kv.mu.Unlock()
+	err, _ := storage.Set(key, index, val)
+	return err, nKey
+}
+func (kv *KVStore) SetText(nKey uint64, val string) error {
+	var storage Storage
 
-	err := storage.Delete(key, index)
+	kv.mu.Lock()
+	key := strconv.FormatUint(nKey, 10)
+	shard, index := kv.continuum.Choose(nKey)
+	storage = kv.storages[shard]
+	kv.mu.Unlock()
+	return storage.SetText(key, val, index)
+}
+
+func (kv *KVStore) GetText(nKey uint64) string {
+	var storage Storage
+	kv.mu.Lock()
+	shard, index := kv.continuum.Choose(nKey)
+	storage = kv.storages[shard]
+	kv.mu.Unlock()
+	key := strconv.FormatUint(nKey, 10)
+	return storage.GetText(key, index)
+}
+
+func (kv *KVStore) Delete(key string) error {
+	var storage Storage
+	kv.mu.Lock()
+	nKey, err := strconv.ParseUint(key, 10, 64)
+	if err != nil {
+		return err
+	}
+	shard, index := kv.continuum.Choose(nKey)
+	storage = kv.storages[shard]
+	kv.mu.Unlock()
+	err = storage.Delete(key, index)
 	return err
 }
 

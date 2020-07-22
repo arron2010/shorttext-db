@@ -10,12 +10,12 @@ func NewBatchMessage(value *Message, cap int) *BatchMessage {
 	return batchMessage
 }
 
-func NewOnlyOneMsg(term uint64, key uint64, text string, msgType uint32) *BatchMessage {
+func NewOnlyOneMsg(term uint64, key string, text string, msgType uint32) *BatchMessage {
 	var batchMessage *BatchMessage
 	var msg *Message
 	msg = &Message{}
 	msg.Term = term
-	msg.Index = key
+	msg.Key = key
 	msg.Text = text
 	msg.Count = 1
 	msg.Type = msgType

@@ -3,7 +3,9 @@ package utils
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"io/ioutil"
+	"math"
 	"os"
 	"os/signal"
 	"reflect"
@@ -113,4 +115,27 @@ func StringToBytes(s string) []byte {
 	bh := reflect.SliceHeader{Data: sh.Data, Len: sh.Len, Cap: sh.Len}
 
 	return *(*[]byte)(unsafe.Pointer(&bh))
+}
+
+func Float32ToByte(float float32) []byte {
+	bits := math.Float32bits(float)
+	bytes := make([]byte, 4)
+	binary.LittleEndian.PutUint32(bytes, bits)
+
+	return bytes
+}
+
+func ByteToFloat32(bytes []byte) float32 {
+	bits := binary.LittleEndian.Uint32(bytes)
+
+	return math.Float32frombits(bits)
+}
+
+func IsNil(i interface{}) bool {
+	v := reflect.ValueOf(i)
+	switch v.Kind() {
+	case reflect.Interface, reflect.Map, reflect.Ptr, reflect.Slice:
+		return v.IsNil()
+	}
+	return false
 }

@@ -8,10 +8,7 @@ import (
 
 func main() {
 	config.LoadSettings("/opt/test/config/test_case2.txt")
-	node, err := shardeddb.NewDBNode()
-	if err != nil {
-		panic(err)
-	}
-	node.Start()
+	shardeddb.Start(true)
+
 	utils.WaitFor()
 }
