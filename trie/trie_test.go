@@ -23,16 +23,16 @@ func TestTrie(t *testing.T) {
 func TestTrieChildren(t *testing.T) {
 	trie := NewTrie()
 	s1 := "1"
-	trie.Insert(Prefix("AB"), Item(s1))
+	trie.Insert(Prefix("AB"), Item(&NodeItem{Key: s1}))
 
 	s2 := "2"
-	trie.Insert(Prefix("ABD2"), Item(&s2))
+	trie.Insert(Prefix("ABD2"), Item(&NodeItem{Key: s2}))
 
 	s3 := "3"
-	trie.Insert(Prefix("ABE3"), Item(&s3))
+	trie.Insert(Prefix("ABE3"), Item(&NodeItem{Key: s3}))
 
 	s4 := "4"
-	trie.Insert(Prefix("BAE3"), Item(&s4))
+	trie.Insert(Prefix("BAE3"), Item(&NodeItem{Key: s4}))
 
 	result := trie.FindItems("AB")
 	fmt.Println(result)

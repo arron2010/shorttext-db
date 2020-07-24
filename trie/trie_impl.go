@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/xp/shorttext-db/config"
 	"io"
 	"sort"
 	"strings"
@@ -16,11 +17,12 @@ var (
 
 const (
 	DEFAULT_MAX_PREFIX_PERNODE          = 2
-	DEFAULT_MAX_CHILDREN_PER_SPARSENODE = 8
+	DEFAULT_MAX_CHILDREN_PER_SPARSENODE = 64
 )
 
 type NodeItem struct {
-	Key string
+	Key    string
+	Weight int
 }
 
 type (
@@ -126,11 +128,11 @@ func (trie *Trie) total() int {
 	return 1 + trie.children.total()
 }
 
-func (trie *Trie) FindItems(txtPrefix string) []Item {
-	prefix := Prefix(txtPrefix)
-	result := make([]Item, 0)
+func (trie *Trie) FindItems(word string, length int) config.TextSet {
+	prefix := Prefix(word)
+	result := make(map[string]int)
 	trie.VisitSubtree(prefix, func(prefix Prefix, item Item) error {
-		result = append(result, item)
+		result[item.Key] = length
 		return nil
 	})
 	return result

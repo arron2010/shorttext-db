@@ -2,6 +2,7 @@ package parse
 
 import (
 	"github.com/xp/shorttext-db/config"
+	"github.com/xp/shorttext-db/glogger"
 	"regexp"
 	"strings"
 	"unicode/utf8"
@@ -13,6 +14,8 @@ const (
 	HYBRID  = 3
 	EMPTY   = 0
 )
+
+var logger = glogger.MustGetLogger("parse")
 
 type textItem struct {
 	Text     string
@@ -52,11 +55,11 @@ func (p *Parser) Parse(text string) ([]config.Text, error) {
 	for _, val := range textItems {
 		switch val.ItemType {
 		case CHINESE:
-			words = p.cutter.CutForChinese(val.Text)
+			words = p.cutter.CutForChinese(val.Text, 4)
 		case ASCII:
-			words = p.cutter.CutForASCII(val.Text)
+			words = p.cutter.CutForASCII(val.Text, 4)
 		case HYBRID:
-			words = p.cutter.CutForHybrid(val.Text)
+			words = p.cutter.CutForHybrid(val.Text, 4)
 		}
 		for _, w := range words {
 			if len(w) == 0 {
@@ -74,6 +77,7 @@ func (p *Parser) Parse(text string) ([]config.Text, error) {
 			checker[w] = true
 		}
 	}
+	logParsedResult(text, result)
 	return result, nil
 }
 
@@ -108,4 +112,12 @@ func (p *Parser) splitChild(index int, text string) []textItem {
 			return result
 		}
 	}
+}
+
+func logParsedResult(text string, actual []config.Text) {
+	result := make([]string, 0)
+	for i := 0; i < len(actual); i++ {
+		result = append(result, string(actual[i]))
+	}
+	logger.Infof("原文本:%s 关键字:%s\n", text, strings.Join(result, "|"))
 }
