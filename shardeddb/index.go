@@ -5,7 +5,6 @@ import (
 	"github.com/xp/shorttext-db/entities"
 	"github.com/xp/shorttext-db/parse"
 	"github.com/xp/shorttext-db/trie"
-	"unicode/utf8"
 )
 
 /*
@@ -34,21 +33,25 @@ type KeywordIndex struct {
 */
 func (k *KeywordIndex) findOriginalItems(record *entities.Record) config.TextSet {
 	result := make(config.TextSet)
-	for word, length := range record.KeyWords {
+	for _, word := range record.KeyWords {
 		item, found := k.dictionary.Find(trie.Prefix(word))
-		itemKey := item.Key
 		if found {
-			w, ok := result[itemKey]
-			if ok {
-				result[itemKey] = w + length
-			} else {
-				result[itemKey] = length
+			for _, itemKey := range item {
+				w, ok := result[itemKey]
+				if ok {
+					result[itemKey] = w + len(word)
+				} else {
+					result[itemKey] = len(word)
+				}
 			}
 		}
 	}
 	return result
 }
 
+/*
+关键字命中超过50%的记录，被提取出来。
+*/
 func (k *KeywordIndex) Find(record *entities.Record) (config.RatioSet, error) {
 	orginalItems := k.findOriginalItems(record)
 	result := make(config.RatioSet)
@@ -62,14 +65,16 @@ func (k *KeywordIndex) Find(record *entities.Record) (config.RatioSet, error) {
 	return result, nil
 }
 
+/*
+创建索引
+*/
 func (k *KeywordIndex) Create(prefix string, key string) error {
 	parsed, err := k.parser.Parse(prefix)
 	if err != nil {
 		return err
 	}
 	for _, v := range parsed {
-		nodeItem := &trie.NodeItem{Key: key, Weight: utf8.RuneCountInString(prefix)}
-		k.dictionary.Set(trie.Prefix(v), trie.Item(nodeItem))
+		k.dictionary.Append(trie.Prefix(v), key)
 	}
 	return nil
 }

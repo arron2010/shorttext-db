@@ -26,7 +26,7 @@ type NodeItem struct {
 }
 
 type (
-	Item        *NodeItem
+	Item        []string
 	Prefix      []rune
 	VisitorFunc func(prefix Prefix, item Item) error
 )
@@ -74,6 +74,10 @@ func (trie *Trie) Insert(key Prefix, item Item) (inserted bool) {
 func (trie *Trie) Set(key Prefix, item Item) {
 	trie.put(key, item, true)
 }
+
+//func (trie *Trie)Append(key Prefix, item Item){
+//	trie.put(key, item, false)
+//}
 
 func (trie *Trie) Find(key Prefix) (item Item, result bool) {
 	var (
@@ -128,11 +132,16 @@ func (trie *Trie) total() int {
 	return 1 + trie.children.total()
 }
 
+/*
+找出包含word的数据项
+*/
 func (trie *Trie) FindItems(word string, length int) config.TextSet {
 	prefix := Prefix(word)
 	result := make(map[string]int)
 	trie.VisitSubtree(prefix, func(prefix Prefix, item Item) error {
-		result[item.Key] = length
+		for _, v := range item {
+			result[v] = length
+		}
 		return nil
 	})
 	return result
@@ -364,11 +373,86 @@ AppendChild:
 	}
 
 InsertItem:
+
 	if replace || node.item == nil {
 		node.item = item
 		return true
 	}
+
 	return false
+}
+
+func (trie *Trie) Append(key Prefix, item string) (inserted bool) {
+	if key == nil {
+		panic(ErrNilPrefix)
+	}
+
+	var (
+		common int
+		node   *Trie = trie
+		child  *Trie
+	)
+
+	if node.prefix == nil {
+		if len(key) <= trie.maxPrefixPerNode {
+			node.prefix = key
+			goto InsertItem
+		}
+		node.prefix = key[:trie.maxPrefixPerNode]
+		key = key[trie.maxPrefixPerNode:]
+		goto AppendChild
+	}
+
+	for {
+		common = node.longestCommonPrefixLength(key)
+		key = key[common:]
+
+		if common < len(node.prefix) {
+			goto SplitPrefix
+		}
+
+		if len(key) == 0 {
+			goto InsertItem
+		}
+
+		child = node.children.next(key[0])
+		if child == nil {
+			goto AppendChild
+		}
+		node = child
+	}
+
+SplitPrefix:
+	child = new(Trie)
+	*child = *node
+	*node = *NewTrie()
+	node.prefix = child.prefix[:common]
+	child.prefix = child.prefix[common:]
+	child = child.compact()
+	node.children = node.children.add(child)
+
+AppendChild:
+	for len(key) != 0 {
+		child := NewTrie()
+		if len(key) <= trie.maxPrefixPerNode {
+			child.prefix = key
+			node.children = node.children.add(child)
+			node = child
+			goto InsertItem
+		} else {
+			child.prefix = key[:trie.maxPrefixPerNode]
+			key = key[trie.maxPrefixPerNode:]
+			node.children = node.children.add(child)
+			node = child
+		}
+	}
+
+InsertItem:
+	if node.item == nil {
+		node.item = make([]string, 0, 4)
+	}
+	node.item = append(node.item, item)
+	return true
 }
 
 func (trie *Trie) compact() *Trie {

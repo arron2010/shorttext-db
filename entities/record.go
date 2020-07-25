@@ -1,6 +1,8 @@
 package entities
 
+import "github.com/xp/shorttext-db/config"
+
 type Record struct {
-	KeyWords map[string]int
+	KeyWords []config.Text
 	KWLength int
 }

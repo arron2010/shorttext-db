@@ -77,7 +77,7 @@ func (p *Parser) Parse(text string) ([]config.Text, error) {
 			checker[w] = true
 		}
 	}
-	logParsedResult(text, result)
+	//logParsedResult(text, result)
 	return result, nil
 }
 
