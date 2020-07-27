@@ -4,16 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/xp/shorttext-db/filedb"
-	"github.com/xp/shorttext-db/shardedkv"
-	"strconv"
-	"sync"
-
 	"github.com/xp/shorttext-db/config"
+	"github.com/xp/shorttext-db/filedb"
 	"github.com/xp/shorttext-db/glogger"
 	"github.com/xp/shorttext-db/network"
 	"github.com/xp/shorttext-db/network/proxy"
+	"github.com/xp/shorttext-db/shardedkv"
 	"github.com/xp/shorttext-db/utils"
+	"strconv"
 	"time"
 )
 
@@ -71,13 +69,12 @@ func (d *dbNodeHandler) Process(ctx context.Context, m network.Message) error {
 		err = db.Set(key, m.Text)
 		logger.Infof("数据库[%s]更新数据:[key:%s,text:%s]\n", m.DBName, m.Key, m.Text)
 	case config.MSG_KV_TEXTSET:
-		err = db.SetWithPrefix(key, m.Text, config.MSG_KV_PREFIX_NAME)
+		err = db.SetWithIndex(key, m.Text, config.GJSON_FIELD_DESC)
 		logger.Infof("数据库[%s] 带前缀更新数据:[key:%s,text:%s]\n", m.DBName, m.Key, m.Text)
 
 	case config.MSG_KV_GET, config.MSG_KV_TEXTGET:
 		val, err = db.Get(key)
 		logger.Infof("数据库[%s]获取数据:[key:%s,text:%s]\n", m.DBName, m.Key, val)
-
 	case config.MSG_KV_DEL:
 		logger.Infof("数据库[%s]删除数据:[key:%s]\n", m.DBName, m.Key)
 		err = db.Delete(key)
@@ -102,71 +99,6 @@ func (d *dbNodeHandler) ReportUnreachable(id uint64) {
 
 type IRegionDBNode interface {
 	FindText(prefix []string) []string
-}
-
-type DBNode struct {
-	channel *network.StreamServer
-	peers   []string
-	ID      int
-	dbs     map[string]IMemStorage
-}
-
-var dbNode *DBNode
-var once sync.Once
-
-func Start(remoting bool) {
-	once.Do(func() {
-		node, err := NewDBNode()
-		if err != nil {
-			panic(err)
-		}
-		if remoting {
-			node.Start()
-		}
-		logger.Infof("服务器[%d]启动成功！", node.ID)
-	})
-}
-
-func GetDBNode() *DBNode {
-	return dbNode
-}
-
-func NewDBNode() (*DBNode, error) {
-	c := config.GetCase()
-	id := int(c.Local.ID)
-	processor := newDBNodeHandler(id, config.GetConfig().KVDBFilePath, config.GetConfig().KVDBNames...)
-	peers := c.GetUrls()
-	channel, err := network.NewStreamServer(id, processor, peers...)
-	if err != nil {
-		return nil, err
-	}
-	node := &DBNode{}
-	node.channel = channel
-	node.ID = id
-	processor.channel = channel
-	node.dbs = processor.dbs
-	return node, err
-}
-
-func NewProxyDBNode() (*DBNode, error) {
-	c := config.GetCase()
-	node := &DBNode{}
-	node.peers = c.GetUrls()
-	return node, nil
-}
-func (d *DBNode) Start() {
-	d.channel.Start()
-}
-
-func (d *DBNode) GetMemStorage(dbName string) IMemStorage {
-	return d.dbs[dbName]
-}
-
-func (d *DBNode) StartProxy() {
-	c := config.GetCase()
-	go filedb.StartSequenceService()
-	server := proxy.NewGrpcProxyServer(int(c.MasterCard.ID), d.peers, config.GetConfig().KVServerAddr)
-	server.Start("INFO")
 }
 
 type dbNodeClient struct {

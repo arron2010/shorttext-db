@@ -31,7 +31,7 @@ func TestIndexString(t *testing.T) {
 //11671678\发电专用设备及配件\汽机及辅助设备配件\汽机本体设备配件\螺栓\N733AP33044\GE\进口\件\020702\1
 func TestJsonString(t *testing.T) {
 	json1 := `{"text":"螺栓\\N733AP33044\\GE\\进口","classText":"发电专用设备及配件\汽机及辅助设备配件\汽机本体设备配件","unit":"件","classId":"020702","state":"1"}`
-	r := gjson.Get(json1, "{text,classText}").Str
+	r := gjson.Get(json1, "{classText}").Str
 
 	fmt.Println(r)
 
@@ -42,7 +42,8 @@ func BenchmarkIndexJSON(b *testing.B) {
 	json1 := `{"text":"螺栓\\N733AP33044\\GE\\进口","classText":"发电专用设备及配件\汽机及辅助设备配件\汽机本体设备配件","unit":"件","classId":"020702","state":"1"}`
 
 	for i := 0; i < b.N; i++ {
-		_ = gjson.Get(json1, "{text}").Str
+		s1 := gjson.Get(json1, "{text}").Str
+		fmt.Println(s1)
 		//_ =gjson.Get(json1,"{classText}").Str
 	}
 

@@ -1,6 +1,10 @@
 package shardeddb
 
 import (
+	"errors"
+	"fmt"
+	"github.com/xp/shorttext-db/config"
+	"github.com/xp/shorttext-db/entities"
 	"github.com/xp/shorttext-db/gjson"
 	"github.com/xp/shorttext-db/memdb"
 	"github.com/xp/shorttext-db/utils"
@@ -12,9 +16,9 @@ import (
 type IMemStorage interface {
 	Get(key string) (string, error)
 	Set(key string, text string) error
-	SetWithPrefix(key string, text string, prefixName string) error
-	//Find(prefix string)([]string,error)
-	GetIndex() Index
+	SetWithIndex(key string, text string, prefixName string) error
+	Find(text string) ([]entities.Record, error)
+	//GetIndex() Index
 	Delete(key string) error
 	Save() error
 	Open() error
@@ -40,11 +44,11 @@ func newMemStorage(id int, path string, name string) (*memStorage, error) {
 	}
 	m.index = NewIndex()
 
-	go m.autoPersistent()
+	go m.persistent()
 	return m, nil
 }
 
-func (m *memStorage) autoPersistent() {
+func (m *memStorage) persistent() {
 	heartbeat := time.NewTicker(time.Second * 3000)
 	defer heartbeat.Stop()
 	for range heartbeat.C {
@@ -101,7 +105,6 @@ func (m *memStorage) Get(key string) (string, error) {
 
 func (m *memStorage) Set(key string, text string) error {
 	var err error
-
 	err = m.db.Update(func(tx *memdb.Tx) error {
 		_, _, err := tx.Set(key, text, nil)
 		return err
@@ -109,15 +112,18 @@ func (m *memStorage) Set(key string, text string) error {
 	return err
 }
 
-func (m *memStorage) SetWithPrefix(key string, text string, prefixName string) error {
+func (m *memStorage) SetWithIndex(key string, text string, prefixName string) error {
 	var err error
 	//if !gjson.Valid(text){
 	//	return errors.New(fmt.Sprintf("文本[%s]不符合Json格式",text))
 	//}
 	err = m.db.Update(func(tx *memdb.Tx) error {
 		_, _, err := tx.Set(key, text, nil)
-		if err != nil {
+		if err == nil {
 			desc := gjson.Get(text, prefixName).Str
+			if len(desc) == 0 {
+				return errors.New(fmt.Sprintf("主键:%s ,字段:%s, 错误信息:创建索引时字段为空", key, prefixName))
+			}
 			if !utils.IsNil(m.index) {
 				err = m.index.Create(desc, key)
 			}
@@ -135,6 +141,48 @@ func (m *memStorage) Delete(key string) error {
 	return err
 }
 
-func (m *memStorage) GetIndex() Index {
-	return m.index
+func (m *memStorage) Find(text string) ([]entities.Record, error) {
+	var r entities.Record
+	result := make([]entities.Record, 0)
+	keyWords, err := m.index.Parse(text)
+	if err != nil {
+		return result, err
+	}
+	kwLen := m.lengthWords(keyWords)
+	found, err := m.index.Find(keyWords, kwLen)
+	if err != nil {
+		return result, err
+	}
+	for k, v := range found {
+		text, err := m.Get(k)
+		if err != nil {
+			return result, err
+		}
+		if len(text) == 0 {
+			continue
+		}
+		r = m.createRecord(text, v)
+		result = append(result, r)
+	}
+	return result, err
 }
+
+func (m *memStorage) createRecord(text string, ratio float32) entities.Record {
+	var r entities.Record = entities.Record{}
+	r.PrefixRatio = ratio
+	r.Desc = gjson.Get(text, config.GJSON_FIELD_DESC).Str
+	r.Id = gjson.Get(text, config.GJSON_FIELD_ID).Str
+	return r
+}
+
+func (m *memStorage) lengthWords(words []config.Text) int {
+	var l int
+	for _, v := range words {
+		l = l + len(v)
+	}
+	return l
+}
+
+//func (m *memStorage) GetIndex() Index {
+//	return m.index
+//}

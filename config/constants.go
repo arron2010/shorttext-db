@@ -15,10 +15,12 @@ const (
 
 	MSG_KV_RESULT_SUCCESS = 3001
 	MSG_KV_RESULT_FAILURE = 3002
-
-	MSG_KV_PREFIX_NAME = "{_desc}"
 )
 
 const (
 	PARSING_RECORD_SEP = "\\"
+)
+const (
+	GJSON_FIELD_ID   = "id"
+	GJSON_FIELD_DESC = "desc"
 )

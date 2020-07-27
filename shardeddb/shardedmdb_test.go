@@ -7,10 +7,11 @@ import (
 	"fmt"
 	"github.com/xp/shorttext-db/config"
 	"github.com/xp/shorttext-db/entities"
-	"github.com/xp/shorttext-db/parse"
+	"github.com/xp/shorttext-db/gjson"
 	"github.com/xp/shorttext-db/shardedkv"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"unicode/utf8"
@@ -72,14 +73,15 @@ func TestKeywordIndex_Create(t *testing.T) {
 		}
 	}
 	var keywrods = []string{`金属`, `弹簧`}
-	r := &entities.Record{}
-	r.KeyWords = make([]config.Text, 0)
+
+	keyWords := make([]config.Text, 0)
+	kwLen := 0
 	for _, v := range keywrods {
 		l := utf8.RuneCountInString(v)
-		r.KeyWords = append(r.KeyWords, config.Text(v))
-		r.KWLength = r.KWLength + l
+		keyWords = append(keyWords, config.Text(v))
+		kwLen = kwLen + l
 	}
-	found, _ := index.Find(r)
+	found, _ := index.Find(keyWords, kwLen)
 	fmt.Println(found)
 
 }
@@ -87,40 +89,53 @@ func TestKeywordIndex_Create(t *testing.T) {
 var index Index
 
 var record *entities.Record
+var kwWords []config.Text
+var kwLen int
+var db IMemStorage
 
 func TestMain(m *testing.M) {
-	inputText := `弹簧\136.318.004/φ100/CZK50-9.3/4.2\哈汽\国产`
-	index = createIndex()
-	p := parse.NewParser()
-	words, _ := p.Parse(inputText)
-	record = createRecord(words)
+	config.LoadSettings("/opt/test/config/test_case1.txt")
+
+	//inputText := `弹簧\136.318.004/φ100/CZK50-9.3/4.2\哈汽\国产`
+	//inputText :=`无源核子料位计\HVZR-TP01-2SV-AC\0-8000mm\开关量`
+	//index = createIndex()
+	//p := parse.NewParser()
+	//words, _ := p.Parse(inputText)
+	//kwWords,kwLen = createRecord(words)
+	Start(false)
+	db = GetDBNode().GetMemStorage("testdb_1")
+	loadData(10000)
 	m.Run()
 }
+
 func BenchmarkKeywordIndex_Find(b *testing.B) {
 
 	b.ResetTimer()
 	b.StartTimer()
+	text := `电压变送器\DC0-99mV DC4-20mA DC220V FPD-1\国产`
+
 	for i := 0; i < b.N; i++ {
-		index.Find(record)
+		db.Find(text)
+		//index.Find(kwWords,kwLen)
 	}
 	b.StopTimer()
 }
 
-func createRecord(words []config.Text) *entities.Record {
-	r := &entities.Record{}
-	r.KeyWords = words
+func createRecord(words []config.Text) ([]config.Text, int) {
+	//r := &entities.Record{}
+	kwLen := 0
 	strList := make([]string, 0)
 	for _, v := range words {
-		r.KWLength = r.KWLength + len(v)
+		kwLen = kwLen + len(v)
 		strList = append(strList, string(v))
 	}
 	//	fmt.Println(strings.Join(strList,"|"))
-	return r
+	return words, kwLen
 }
 
 func createIndex() Index {
 	config.LoadSettings("/opt/test/config/test_case1.txt")
-	var path = `/opt/test/物料搜索_10万条.txt`
+	var path = `/opt/test/采购数据0123.txt`
 	f, err := os.Open(path)
 	buf := bufio.NewReader(f)
 	if err != nil {
@@ -142,7 +157,7 @@ func createIndex() Index {
 		}
 		lineStr := string(line)
 		segments := strings.Split(lineStr, "\\")
-		sliceSeg := segments[3:]
+		sliceSeg := segments[1:]
 		text := strings.Join(sliceSeg, "\\")
 		err = index.Create(text, segments[0])
 		if err != nil {
@@ -152,4 +167,64 @@ func createIndex() Index {
 	}
 	fmt.Println("创建成功，记录数:", count)
 	return index
+}
+
+func loadData(maxCount int) Index {
+	var record *entities.Record
+	var path = `/opt/test/采购数据0123.txt`
+	f, err := os.Open(path)
+	buf := bufio.NewReader(f)
+	if err != nil {
+		fmt.Println("读取文件失败：", path)
+	}
+	//tpl:=`{"id":"%s","desc":"%s"}`
+	var count = 0
+	for {
+
+		line, _, err := buf.ReadLine()
+		if err != nil {
+			if err != io.EOF {
+				fmt.Println("读取文件内容错误:", err)
+				break
+			}
+			break
+		}
+		if !utf8.Valid(line) {
+			continue
+		}
+
+		if count >= maxCount {
+			break
+		}
+		lineStr := string(line)
+		segments := strings.Split(lineStr, "\\")
+		sliceSeg := segments[1:]
+		text := strings.Join(sliceSeg, "\\")
+
+		record = &entities.Record{Id: segments[0], Desc: text}
+		buf, err := json.Marshal(record)
+		jsonText := string(buf)
+		if gjson.Valid(jsonText) {
+			err = db.SetWithIndex(strconv.Itoa(count), jsonText, config.GJSON_FIELD_DESC)
+			if err != nil {
+				fmt.Println("索引创建失败:", err)
+			}
+		} else {
+			fmt.Println("非gjson格式:", lineStr)
+		}
+
+		count++
+
+	}
+	fmt.Println("创建成功，记录数:", count)
+	return index
+}
+
+func TestStart(t *testing.T) {
+	text := `电压变送器\DC0-99mV DC4-20mA DC220V FPD-1\国产`
+	records, err := db.Find(text)
+	if err != nil {
+		fmt.Println("TestStart 发生错误:", err)
+	}
+	fmt.Println(records)
 }
