@@ -1,7 +1,7 @@
 package network
 
 import (
-	pioutil "com.neep/goplatform/goraft/ioutil"
+	pioutil "github.com/xp/shorttext-db/network/ioutil"
 
 	"context"
 	"io/ioutil"

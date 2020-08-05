@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package services;
+import "com.neep/goplatform/easymr/artifacts/task/task.proto";
+import "com.neep/goplatform/easymr/artifacts/message/message.proto";
+
+
+service RPCService {
+	rpc Distribute(task.TaskPayload) returns (task.TaskPayload) {}
+	rpc Exchange(message.CardMessage) returns (message.CardMessage) {}
+}

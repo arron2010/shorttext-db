@@ -1,9 +1,10 @@
 package network
 
 import (
-	"com.neep/goplatform/goraft/raftextension"
 	"encoding/binary"
 	"errors"
+	"fmt"
+	"github.com/golang/protobuf/proto"
 	"io"
 )
 
@@ -23,7 +24,7 @@ func (enc *messageEncoder) encode(m *Message) error {
 		return err
 	}
 
-	_, err := enc.w.Write(raftextension.MustMarshal(m))
+	_, err := enc.w.Write(mustMarshal(m))
 	return err
 }
 
@@ -54,6 +55,18 @@ func (dec *messageDecoder) decodeLimit(numBytes uint64) (Message, error) {
 	if _, err := io.ReadFull(dec.r, buf); err != nil {
 		return *m, err
 	}
-	err := raftextension.Unmarshal(m, buf)
+	err := unmarshal(m, buf)
 	return *m, err
+}
+
+func mustMarshal(pb proto.Message) []byte {
+	d, err := proto.Marshal(pb)
+	if err != nil {
+		panic(fmt.Sprintf("marshal should never fail (%v)", err))
+	}
+	return d
+}
+
+func unmarshal(pb proto.Message, data []byte) error {
+	return proto.Unmarshal(data, pb)
 }

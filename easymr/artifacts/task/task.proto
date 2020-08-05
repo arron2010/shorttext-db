@@ -1,0 +1,12 @@
+
+syntax = "proto3";
+
+package task;
+
+option go_package = "com.neep/goplatform/easymr/artifacts/task";
+
+message TaskPayload {
+	bytes payload = 1;
+	//较大二级制流，单独封装传递给GRPC
+	bytes bigPayload =2;
+}

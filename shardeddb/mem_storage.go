@@ -18,7 +18,6 @@ type IMemStorage interface {
 	Set(key string, text string) error
 	SetWithIndex(key string, text string, prefixName string) error
 	Find(text string) ([]entities.Record, error)
-	//GetIndex() Index
 	Delete(key string) error
 	Save() error
 	Open() error

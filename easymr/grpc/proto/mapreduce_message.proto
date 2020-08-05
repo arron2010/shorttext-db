@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "com.neep/goplatform/easymr/grpc/proto";
+message ReqMRMsg {
+   string handler =1;
+   string mapper =2;
+   string reducer =3;
+   string consumer =4;
+   map<string, string> params =5;
+   map<string,bytes> content = 6;
+}
+
+message RespMRMsg{
+    map<string,bytes> result =1;
+    bool success = 2;
+    string message = 3;
+}
+

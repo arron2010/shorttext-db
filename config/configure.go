@@ -16,7 +16,7 @@ const configPath = "/opt/gopath/bin/db_config.txt"
 
 var logger = glogger.MustGetLogger("config")
 
-func LoadSettings(cpath string) {
+func LoadSettings(cpath string, f func(config *Config)) {
 	once.Do(func() {
 
 		casePath := flag.String("cpath", "/opt/gopath/bin/case.txt", "定义服务器集群信息")
@@ -45,7 +45,9 @@ func LoadSettings(cpath string) {
 		if err = json.Unmarshal(bytes, caseInfo); err != nil {
 			panic("集群配置加载异常")
 		}
-
+		if f != nil {
+			f(configInfo)
+		}
 	})
 }
 
@@ -81,11 +83,12 @@ type Config struct {
 	//序列服务器地址
 	SequenceServer string `json:"SequenceServer"`
 
-	DictPath      string `json:"DictPath"`
-	HmmPath       string `json:"HmmPath"`
-	UserDictPath  string `json:"UserDictPath"`
-	IdfPath       string `json:"IdfPath"`
-	StopWordsPath string `json:"StopWordsPath"`
+	DictPath        string `json:"DictPath"`
+	HmmPath         string `json:"HmmPath"`
+	UserDictPath    string `json:"UserDictPath"`
+	IdfPath         string `json:"IdfPath"`
+	StopWordsPath   string `json:"StopWordsPath"`
+	WorkerPerMaster int
 }
 
 func GetConfig() *Config {

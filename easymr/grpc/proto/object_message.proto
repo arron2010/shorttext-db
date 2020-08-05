@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "com.neep/goplatform/easymr/grpc/proto";
+
+message ObjectItem{
+    string type = 1;
+    bytes content =2;
+}
+

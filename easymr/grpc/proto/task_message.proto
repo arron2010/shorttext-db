@@ -1,0 +1,22 @@
+syntax = "proto3";
+import  "collection_message.proto";
+import  "taskcontext_message.proto";
+
+package proto;
+
+option go_package = "com.neep/goplatform/easymr/grpc/proto";
+
+message Task{
+    uint32 type       = 1;
+    uint32 priority    = 2;
+    string consumable = 3;
+    Collection  source   =4;
+    Collection result   =5;
+    TaskContext context =6;
+    uint32 stage      =7;
+    uint32 RunType =8;
+    uint32 TimeOut = 9;
+    uint64 Term =10;
+    uint64 Index =11;
+}
+

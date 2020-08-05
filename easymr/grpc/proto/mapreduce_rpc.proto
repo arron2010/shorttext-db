@@ -1,0 +1,11 @@
+syntax = "proto3";
+import  "proto/mapreduce_message.proto";
+package proto;
+
+option go_package = "com.neep/goplatform/easymr/grpc/proto";
+
+service MRHandler{
+    rpc DoMR(ReqMRMsg) returns (RespMRMsg){}
+
+}
+

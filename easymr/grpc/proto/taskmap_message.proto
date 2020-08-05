@@ -1,0 +1,10 @@
+syntax = "proto3";
+import  "task_message.proto";
+
+package proto;
+
+option go_package = "com.neep/goplatform/easymr/grpc/proto";
+
+message TaskMap{
+    map<uint32,Task> content =1;
+}

@@ -1,8 +1,8 @@
 package config
 
 import (
-	"com.neep/goplatform/util"
 	"encoding/json"
+	"github.com/xp/shorttext-db/utils"
 	"strconv"
 	"testing"
 )
@@ -22,7 +22,7 @@ func TestCreateCaseInfo(t *testing.T) {
 		caseInfo.MasterCard = cards[0]
 		buff, _ := json.Marshal(caseInfo)
 		path := "/opt/test/config/test_case" + strconv.Itoa(i) + ".txt"
-		util.WriteFile(path, string(buff))
+		utils.WriteFile(path, string(buff))
 	}
 	configObj := &Config{}
 	configObj.KVDBNames = []string{"testdb"}
@@ -41,6 +41,6 @@ func TestCreateCaseInfo(t *testing.T) {
 	configObj.StopWordsPath = "/opt/gopath/bin/dict/stop_words.utf8"
 
 	buff, _ := json.Marshal(configObj)
-	util.WriteFile(configPath, string(buff))
+	utils.WriteFile(configPath, string(buff))
 
 }

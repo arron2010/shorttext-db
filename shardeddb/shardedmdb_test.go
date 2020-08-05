@@ -2,13 +2,13 @@ package shardeddb
 
 import (
 	"bufio"
-	"com.neep/goplatform/util"
 	"encoding/json"
 	"fmt"
 	"github.com/xp/shorttext-db/config"
 	"github.com/xp/shorttext-db/entities"
 	"github.com/xp/shorttext-db/gjson"
 	"github.com/xp/shorttext-db/shardedkv"
+	"github.com/xp/shorttext-db/utils"
 	"io"
 	"os"
 	"strconv"
@@ -28,7 +28,7 @@ func TestJsonMarshal(t *testing.T) {
 	if err != nil {
 		fmt.Println(err)
 	}
-	text := util.BytesToString(buff)
+	text := utils.BytesToString(buff)
 	fmt.Println(text)
 	var obj shardedkv.Object
 	json.Unmarshal(buff, &obj)
@@ -94,7 +94,7 @@ var kwLen int
 var db IMemStorage
 
 func TestMain(m *testing.M) {
-	config.LoadSettings("/opt/test/config/test_case1.txt")
+	config.LoadSettings("/opt/test/config/test_case1.txt", nil)
 
 	//inputText := `弹簧\136.318.004/φ100/CZK50-9.3/4.2\哈汽\国产`
 	//inputText :=`无源核子料位计\HVZR-TP01-2SV-AC\0-8000mm\开关量`

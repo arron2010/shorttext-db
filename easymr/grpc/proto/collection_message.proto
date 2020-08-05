@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+import  "object_message.proto";
+package proto;
+
+option go_package = "com.neep/goplatform/easymr/grpc/proto";
+
+message Collection{
+    repeated ObjectItem content =1;
+}
+

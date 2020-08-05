@@ -1,12 +1,12 @@
 package proxy
 
 import (
-	"com.neep/goplatform/util"
 	"context"
 	"github.com/xp/shorttext-db/filedb"
 	"github.com/xp/shorttext-db/glogger"
 	"github.com/xp/shorttext-db/grpcpool"
 	"github.com/xp/shorttext-db/network"
+	"github.com/xp/shorttext-db/utils"
 	"google.golang.org/grpc"
 	"math"
 	"net"
@@ -74,7 +74,7 @@ func (s *GrpcProxyServer) Start(logLevel string) {
 //}
 func (s *GrpcProxyServer) Send(ctx context.Context, batchMessage *network.BatchMessage) (*network.BatchMessage, error) {
 
-	logger.Infof("--Proxy server received message term:%d GOROUTINE:%d\n", batchMessage.Term, util.GetGID())
+	logger.Infof("--Proxy server received message term:%d GOROUTINE:%d\n", batchMessage.Term, utils.GetGID())
 	//s.before(batchMessage)
 	count := len(batchMessage.Messages)
 	for i := 0; i < count; i++ {
@@ -89,7 +89,7 @@ func (s *GrpcProxyServer) Send(ctx context.Context, batchMessage *network.BatchM
 
 func (s *GrpcProxyServer) Process(ctx context.Context, m network.Message) error {
 	go func() {
-		logger.Infof("++Proxy server begin to process message term:%d GOROUTINE:%d\n", m.Term, util.GetGID())
+		logger.Infof("++Proxy server begin to process message term:%d GOROUTINE:%d\n", m.Term, utils.GetGID())
 		s.cache.Put(&m)
 	}()
 

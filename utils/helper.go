@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"github.com/fatih/structs"
 	"io/ioutil"
 	"math"
 	"os"
@@ -138,4 +139,8 @@ func IsNil(i interface{}) bool {
 		return v.IsNil()
 	}
 	return false
+}
+
+func Map(m interface{}) map[string]interface{} {
+	return structs.Map(m)
 }

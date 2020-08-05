@@ -7,10 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package glogger
 
 import (
-	"com.neep/goplatform/glogger/logext"
+	"github.com/xp/shorttext-db/glogger/logext"
 	"github.com/xp/shorttext-db/glogger/logstyle"
 
-	//"com.neep/goplatform/glogger/logext"
+	//"github.com/xp/shorttext-db/glogger/logext"
 
 	"io"
 	"os"

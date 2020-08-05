@@ -15,7 +15,7 @@ import (
 )
 
 func createIndex() shardeddb.Index {
-	config.LoadSettings("/opt/test/config/test_case1.txt")
+	config.LoadSettings("/opt/test/config/test_case1.txt", nil)
 	var path = `/opt/test/物料搜索_10万条.txt`
 	f, err := os.Open(path)
 	buf := bufio.NewReader(f)

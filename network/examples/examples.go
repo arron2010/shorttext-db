@@ -1,11 +1,11 @@
 package examples
 
 import (
-	"com.neep/goplatform/util"
 	"context"
 	"fmt"
 	"github.com/xp/shorttext-db/network"
 	"github.com/xp/shorttext-db/network/proxy"
+	"github.com/xp/shorttext-db/util"
 	"github.com/xp/shorttext-db/utils"
 )
 

@@ -2,6 +2,8 @@ package shardeddb
 
 import (
 	"github.com/xp/shorttext-db/config"
+	"github.com/xp/shorttext-db/easymr/collaborator"
+	"github.com/xp/shorttext-db/entities"
 	"github.com/xp/shorttext-db/filedb"
 	"github.com/xp/shorttext-db/network"
 	"github.com/xp/shorttext-db/network/proxy"
@@ -16,6 +18,12 @@ type DBNode struct {
 	peers   []string
 	ID      int
 	dbs     map[string]IMemStorage
+	clbt    *collaborator.Collaborator
+}
+
+type findParam struct {
+	DBName string
+	Text   string
 }
 
 func Start(remoting bool) {
@@ -28,6 +36,10 @@ func Start(remoting bool) {
 		if remoting {
 			dbNode.Start()
 		}
+		cfg := config.GetConfig()
+		LoadLookupJob(cfg)
+		dbNode.clbt = collaborator.NewCollaborator(int(cfg.KVDBMaxRange))
+
 		logger.Infof("服务器[%d]启动成功！", dbNode.ID)
 	})
 }
@@ -80,4 +92,9 @@ func (d *DBNode) StartProxy() {
 	go filedb.StartSequenceService()
 	server := proxy.NewGrpcProxyServer(int(c.MasterCard.ID), d.peers, config.GetConfig().KVServerAddr)
 	server.Start("INFO")
+}
+
+func (d *DBNode) Find(text string) ([]entities.Record, error) {
+
+	return nil, nil
 }

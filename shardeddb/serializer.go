@@ -19,7 +19,7 @@ func serialize(source interface{}) (string, error) {
 		binary.LittleEndian.PutUint32(buff, uint32(source.(int)))
 	case float32:
 		var f float32 = source.(float32)
-		buff = util.Float32ToByte(f)
+		buff = utils.Float32ToByte(f)
 	case []byte:
 		buff = source.([]byte)
 	default:
