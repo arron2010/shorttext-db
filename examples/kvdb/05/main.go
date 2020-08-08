@@ -24,7 +24,7 @@ type User struct {
 //}
 
 func test02() {
-	config.LoadSettings("/opt/test/config/test_case1.txt")
+	config.LoadSettings("/opt/test/config/test_case1.txt", nil)
 
 	kv, _ := shardeddb.NewKVStore("testdb")
 
@@ -43,7 +43,7 @@ func test02() {
 
 }
 func test05() {
-	config.LoadSettings("/opt/test/config/test_case1.txt")
+	config.LoadSettings("/opt/test/config/test_case1.txt", nil)
 
 	kv, _ := shardeddb.NewKVStore("testdb")
 	user1 := &User{}

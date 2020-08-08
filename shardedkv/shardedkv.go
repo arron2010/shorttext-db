@@ -1,6 +1,7 @@
 package shardedkv
 
 import (
+	"github.com/xp/shorttext-db/api"
 	"github.com/xp/shorttext-db/filedb"
 	"github.com/xp/shorttext-db/glogger"
 	"strconv"
@@ -11,49 +12,12 @@ var logger = glogger.MustGetLogger("shardedkv")
 
 type Object interface{}
 
-//存储接口
-type Storage interface {
-	Open() error
-
-	Get(key string, index uint64, item interface{}) (interface{}, error)
-
-	Set(key string, index uint64, value interface{}) (error, string)
-
-	Delete(key string, index uint64) error
-
-	//ResetConnection(key uint64) error
-
-	GetText(key string, index uint64) string
-
-	SetText(key string, value string, index uint64) error
-
-	Close() error
-}
-
-type IKVStoreClient interface {
-	Get(nKey uint64, item interface{}) (interface{}, error)
-	Set(nKey uint64, val interface{}) (error, uint64)
-
-	SetText(nKey uint64, val string) error
-	GetText(nKey uint64) string
-}
-
 type KVStore struct {
-	continuum Chooser
-	storages  map[string]Storage
+	continuum api.Chooser
+	storages  map[string]api.Storage
 	seq       filedb.SequenceSvc
 	mu        sync.RWMutex
 	name      string
-}
-
-//分片选择器
-type Chooser interface {
-	// 设置分片的桶
-	SetBuckets([]string) error
-	//根据数据键，获取对应分片的桶
-	Choose(key uint64) (string, uint64)
-	// 获取分片的桶
-	Buckets() []string
 }
 
 /*
@@ -115,7 +79,7 @@ func (r *RangeChooser) Choose(key uint64) (string, uint64) {
 		shardName = r.partitions[len(r.partitions)-1].name
 	}
 	dbIndex = key%uint64(r.maxRange) + 1
-	logger.Infof("分区选择[Key:%d,ShardName:%s,DbIndex:%d]\n", key, shardName, dbIndex)
+	//	logger.Infof("分区选择[Key:%d,ShardName:%s,DbIndex:%d]\n", key, shardName, dbIndex)
 	return shardName, dbIndex
 }
 
@@ -126,14 +90,14 @@ func (r *RangeChooser) Buckets() []string {
 // 命名的分片存储
 type Shard struct {
 	Name    string
-	Backend Storage
+	Backend api.Storage
 }
 
-func New(name string, chooser Chooser, seq filedb.SequenceSvc, shards []Shard) IKVStoreClient {
+func New(name string, chooser api.Chooser, seq filedb.SequenceSvc, shards []Shard) api.IKVStoreClient {
 	var buckets []string
 	kv := &KVStore{
 		continuum: chooser,
-		storages:  make(map[string]Storage),
+		storages:  make(map[string]api.Storage),
 	}
 	for _, shard := range shards {
 		buckets = append(buckets, shard.Name)
@@ -147,7 +111,7 @@ func New(name string, chooser Chooser, seq filedb.SequenceSvc, shards []Shard) I
 
 func (kv *KVStore) Get(nKey uint64, item interface{}) (interface{}, error) {
 
-	var storage Storage
+	var storage api.Storage
 	kv.mu.Lock()
 	shard, index := kv.continuum.Choose(nKey)
 	storage = kv.storages[shard]
@@ -165,7 +129,7 @@ func (kv *KVStore) IniSeq(val uint64) {
 }
 
 func (kv *KVStore) Set(nKey uint64, val interface{}) (error, uint64) {
-	var storage Storage
+	var storage api.Storage
 
 	kv.mu.Lock()
 	if nKey == 0 {
@@ -179,7 +143,7 @@ func (kv *KVStore) Set(nKey uint64, val interface{}) (error, uint64) {
 	return err, nKey
 }
 func (kv *KVStore) SetText(nKey uint64, val string) error {
-	var storage Storage
+	var storage api.Storage
 
 	kv.mu.Lock()
 	key := strconv.FormatUint(nKey, 10)
@@ -190,7 +154,7 @@ func (kv *KVStore) SetText(nKey uint64, val string) error {
 }
 
 func (kv *KVStore) GetText(nKey uint64) string {
-	var storage Storage
+	var storage api.Storage
 	kv.mu.Lock()
 	shard, index := kv.continuum.Choose(nKey)
 	storage = kv.storages[shard]
@@ -200,7 +164,7 @@ func (kv *KVStore) GetText(nKey uint64) string {
 }
 
 func (kv *KVStore) Delete(key string) error {
-	var storage Storage
+	var storage api.Storage
 	kv.mu.Lock()
 	nKey, err := strconv.ParseUint(key, 10, 64)
 	if err != nil {
@@ -228,7 +192,7 @@ func (kv *KVStore) Delete(key string) error {
 //}
 
 //增加分片
-func (kv *KVStore) AddShard(shard string, storage Storage) {
+func (kv *KVStore) AddShard(shard string, storage api.Storage) {
 
 	kv.mu.Lock()
 	defer kv.mu.Unlock()

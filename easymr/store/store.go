@@ -120,9 +120,7 @@ func (fs *FS) HAdd(f func(source *task.Collection,
 	return
 }
 
-func (fs *FS) CallEx(id string, source *task.Collection,
-	result *task.Collection,
-	context *task.TaskContext) bool {
+func (fs *FS) CallEx(id string, workerId uint, taskItem *task.Task) bool {
 	var (
 		bol bool = false
 	)
@@ -132,7 +130,7 @@ func (fs *FS) CallEx(id string, source *task.Collection,
 		logger.Error(constants.ERR_FUNCT_NOT_EXIST)
 		return false
 	}
-	bol = consumer.Consume(source, result, context)
+	bol = consumer.Consume(workerId, taskItem)
 
 	return bol
 }

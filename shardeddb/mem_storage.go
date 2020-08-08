@@ -10,6 +10,7 @@ import (
 	"github.com/xp/shorttext-db/utils"
 	"os"
 	"strconv"
+	"sync/atomic"
 	"time"
 )
 
@@ -22,6 +23,7 @@ type IMemStorage interface {
 	Save() error
 	Open() error
 	Close() error
+	GetKeyCount() int
 }
 
 //对内存数据库的封装,提供简易接口
@@ -30,6 +32,7 @@ type memStorage struct {
 	db    *memdb.DB
 	path  string
 	index Index
+	count int
 }
 
 func newMemStorage(id int, path string, name string) (*memStorage, error) {
@@ -108,6 +111,10 @@ func (m *memStorage) Set(key string, text string) error {
 		_, _, err := tx.Set(key, text, nil)
 		return err
 	})
+	if err != nil {
+		m.increaseCount(1)
+	}
+
 	return err
 }
 
@@ -129,6 +136,10 @@ func (m *memStorage) SetWithIndex(key string, text string, prefixName string) er
 		}
 		return err
 	})
+	if err == nil {
+		m.increaseCount(1)
+	}
+
 	return err
 }
 
@@ -137,9 +148,15 @@ func (m *memStorage) Delete(key string) error {
 		_, err := tx.Delete(key)
 		return err
 	})
+	if err != nil {
+		m.increaseCount(-1)
+	}
 	return err
 }
 
+/*
+查找文本命中的记录
+*/
 func (m *memStorage) Find(text string) ([]entities.Record, error) {
 	var r entities.Record
 	result := make([]entities.Record, 0)
@@ -166,6 +183,9 @@ func (m *memStorage) Find(text string) ([]entities.Record, error) {
 	return result, err
 }
 
+/*
+根据gjson字符格式，创建记录对象
+*/
 func (m *memStorage) createRecord(text string, ratio float32) entities.Record {
 	var r entities.Record = entities.Record{}
 	r.PrefixRatio = ratio
@@ -174,6 +194,9 @@ func (m *memStorage) createRecord(text string, ratio float32) entities.Record {
 	return r
 }
 
+/*
+获得分词后，文本的总长度
+*/
 func (m *memStorage) lengthWords(words []config.Text) int {
 	var l int
 	for _, v := range words {
@@ -182,6 +205,36 @@ func (m *memStorage) lengthWords(words []config.Text) int {
 	return l
 }
 
-//func (m *memStorage) GetIndex() Index {
-//	return m.index
-//}
+/*
+键计数器，每次增加一条记录加一,删除数据减一
+*/
+func (m *memStorage) increaseCount(delta int64) {
+	var nCount int
+	key := "key_count"
+	strCount, err := m.Get(key)
+	if err != nil && err.Error() != "not found" {
+		logger.Errorf("Service:memStorage,Message:获取Key数量报错|%s\n", err.Error())
+		return
+	}
+	if len(strCount) == 0 {
+		nCount = 0
+	} else {
+		nCount, err = strconv.Atoi(strCount)
+		if err != nil {
+			logger.Errorf("Service:memStorage,Message:类型转换报错|%s|%s\n", strCount, err.Error())
+			return
+		}
+	}
+
+	nCount64 := int64(nCount)
+	m.count = int(atomic.AddInt64(&nCount64, delta))
+	m.Set(key, strconv.Itoa(m.count))
+
+}
+
+/*
+获得本库键的总数
+*/
+func (m *memStorage) GetKeyCount() int {
+	return m.count
+}

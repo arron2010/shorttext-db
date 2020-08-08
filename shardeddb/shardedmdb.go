@@ -4,7 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/xp/shorttext-db/api"
 	"github.com/xp/shorttext-db/config"
+	"github.com/xp/shorttext-db/easymr/artifacts/task"
+	"github.com/xp/shorttext-db/easymr/collaborator"
+	"github.com/xp/shorttext-db/easymr/interfaces"
+	"github.com/xp/shorttext-db/entities"
 	"github.com/xp/shorttext-db/filedb"
 	"github.com/xp/shorttext-db/glogger"
 	"github.com/xp/shorttext-db/network"
@@ -19,18 +24,23 @@ var logger = glogger.MustGetLogger("shardeddb")
 
 //流通道处理者
 type dbNodeHandler struct {
-	channel *network.StreamServer
-	dbs     map[string]IMemStorage
+	channel   *network.StreamServer
+	dbs       map[string]IMemStorage
+	clbt      *collaborator.Collaborator
+	defaultDB string
+	dbCount   int
 }
 
-func newDBNodeHandler(id int, path string, names ...string) *dbNodeHandler {
+func newDBNodeHandler(id int, dbCount int, path string, names ...string) *dbNodeHandler {
 	d := &dbNodeHandler{}
 	d.dbs = make(map[string]IMemStorage)
-	cf := config.GetConfig()
-	var i uint64
+
+	d.dbCount = dbCount
+
+	var i int
 	for _, name := range names {
-		for i = 1; i <= uint64(cf.KVDBMaxRange); i++ {
-			dbName := name + "_" + strconv.FormatUint(i, 10)
+		for i = 1; i <= d.dbCount; i++ {
+			dbName := name + "_" + strconv.FormatUint(uint64(i), 10)
 			dbInstance, err := newMemStorage(id, path, dbName)
 			if err != nil {
 				logger.Errorf("创建数据库实例[%s]失败:%s\n", dbName, err.Error())
@@ -39,7 +49,38 @@ func newDBNodeHandler(id int, path string, names ...string) *dbNodeHandler {
 			d.dbs[dbName] = dbInstance
 		}
 	}
+
 	return d
+}
+
+func (d *dbNodeHandler) getCount(db string) []int {
+	countList := make([]int, 0, len(d.dbs))
+	for i := 1; i <= d.dbCount; i++ {
+		dbName := db + "_" + strconv.FormatUint(uint64(i), 10)
+		store := d.dbs[dbName]
+		countList = append(countList, store.GetKeyCount())
+	}
+	return countList
+
+}
+func (d *dbNodeHandler) find(db string, text string) ([]entities.Record, error) {
+	if len(db) == 0 {
+		db = d.defaultDB
+	}
+	jobInfo := &interfaces.JobInfo{}
+	jobInfo.Handler = "LookupJob"
+	jobInfo.Params = make(map[string]string)
+	jobInfo.Context = make(map[string][]byte)
+	jobInfo.LocalJob = true
+	p := &findParam{}
+	p.Text = text
+	p.DBName = db
+	jobInfo.Source = p
+
+	context := &task.TaskContext{}
+	context.Context = make(map[string]interface{})
+	result, err := d.clbt.MapReduce(jobInfo, context)
+	return result.Content.([]entities.Record), err
 }
 
 func (d *dbNodeHandler) Process(ctx context.Context, m network.Message) error {
@@ -268,17 +309,26 @@ func newShards(dbName string) ([]shardedkv.Shard, error) {
 }
 
 //创建KV数据访问客户端
-func NewKVStore(dbName string) (shardedkv.IKVStoreClient, error) {
-	cf := config.GetConfig()
+func newKVStore(dbName string, maxRange uint32, rowCount uint32, start uint32, sequenceServer string) (api.IKVStoreClient, error) {
 	shards, err := newShards(dbName)
 	if err != nil {
 		return nil, err
 	}
-	chooser := shardedkv.NewRangeChooser(uint32(cf.KVDBMaxRange), uint32(cf.KVDBRowCount), uint32(cf.KVDRowStart))
-	seq, err := filedb.NewSequenceProxy(cf.SequenceServer)
+	chooser := shardedkv.NewRangeChooser(
+		maxRange,
+		rowCount,
+		start)
+	seq, err := filedb.NewSequenceProxy(sequenceServer)
 	if err != nil {
 		return nil, err
 	}
 	kv := shardedkv.New(dbName, chooser, seq, shards)
 	return kv, err
+}
+
+func NewKVStore(dbName string) (api.IKVStoreClient, error) {
+	return newKVStore(dbName,
+		uint32(config.GetConfig().KVDBMaxRange),
+		uint32(config.GetConfig().KVDBRowCount),
+		uint32(config.GetConfig().KVDRowStart), config.GetConfig().SequenceServer)
 }

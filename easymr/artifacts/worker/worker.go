@@ -2,7 +2,6 @@ package worker
 
 import (
 	"github.com/xp/shorttext-db/easymr/artifacts/task"
-	"github.com/xp/shorttext-db/easymr/constants"
 	"github.com/xp/shorttext-db/easymr/store"
 )
 
@@ -40,12 +39,11 @@ func (w *Worker) Start() {
 				//	w.ID,
 				//	tk.Priority,
 				//))
-				tk.Context.Context[constants.WORKER_ID] = w.ID
+				//	tk.Context.Context[constants.WORKER_ID] = w.ID
 				tkf.Return(fs.CallEx(
 					(*tk).Consumable,
-					&(*tk).Source,
-					&(*tk).Result,
-					(*tk).Context,
+					w.ID,
+					tk,
 				))
 			}
 		}

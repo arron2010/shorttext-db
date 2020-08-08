@@ -30,7 +30,7 @@ type IMapper interface {
 消费者接口，用来处理mapper以后的数据
 */
 type IConsumer interface {
-	Consume(source *task.Collection, result *task.Collection, context *task.TaskContext) bool
+	Consume(workerId uint, taskItem *task.Task) bool
 }
 
 type IReducer interface {

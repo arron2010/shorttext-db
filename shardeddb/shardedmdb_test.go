@@ -11,7 +11,6 @@ import (
 	"github.com/xp/shorttext-db/utils"
 	"io"
 	"os"
-	"strconv"
 	"strings"
 	"testing"
 	"unicode/utf8"
@@ -64,7 +63,7 @@ func TestGetDBNode(t *testing.T) {
 }
 
 func TestKeywordIndex_Create(t *testing.T) {
-	config.LoadSettings("/opt/test/config/test_case1.txt")
+	config.LoadSettings("/opt/test/config/test_case1.txt", nil)
 	index := NewIndex()
 	for i := 0; i < len(goodsItems); i++ {
 		err := index.Create(goodsItems[i]._desc, goodsItems[i].Id)
@@ -94,7 +93,7 @@ var kwLen int
 var db IMemStorage
 
 func TestMain(m *testing.M) {
-	config.LoadSettings("/opt/test/config/test_case1.txt", nil)
+	config.LoadSettings("/opt/test/config/test_case2.txt", nil)
 
 	//inputText := `弹簧\136.318.004/φ100/CZK50-9.3/4.2\哈汽\国产`
 	//inputText :=`无源核子料位计\HVZR-TP01-2SV-AC\0-8000mm\开关量`
@@ -103,8 +102,9 @@ func TestMain(m *testing.M) {
 	//words, _ := p.Parse(inputText)
 	//kwWords,kwLen = createRecord(words)
 	Start(false)
-	db = GetDBNode().GetMemStorage("testdb_1")
-	loadData(10000)
+
+	db = GetDBNode().GetMemStorage("testdb_3")
+	loadData(9000)
 	m.Run()
 }
 
@@ -134,7 +134,7 @@ func createRecord(words []config.Text) ([]config.Text, int) {
 }
 
 func createIndex() Index {
-	config.LoadSettings("/opt/test/config/test_case1.txt")
+	config.LoadSettings("/opt/test/config/test_case1.txt", nil)
 	var path = `/opt/test/采购数据0123.txt`
 	f, err := os.Open(path)
 	buf := bufio.NewReader(f)
@@ -180,7 +180,7 @@ func loadData(maxCount int) Index {
 	//tpl:=`{"id":"%s","desc":"%s"}`
 	var count = 0
 	for {
-
+		count++
 		line, _, err := buf.ReadLine()
 		if err != nil {
 			if err != io.EOF {
@@ -193,19 +193,17 @@ func loadData(maxCount int) Index {
 			continue
 		}
 
-		if count >= maxCount {
-			break
-		}
 		lineStr := string(line)
 		segments := strings.Split(lineStr, "\\")
 		sliceSeg := segments[1:]
 		text := strings.Join(sliceSeg, "\\")
-
+		//fmt.Println(text)
 		record = &entities.Record{Id: segments[0], Desc: text}
 		buf, err := json.Marshal(record)
 		jsonText := string(buf)
 		if gjson.Valid(jsonText) {
-			err = db.SetWithIndex(strconv.Itoa(count), jsonText, config.GJSON_FIELD_DESC)
+
+			err = dbNode.Set("testdb", uint64(count), jsonText)
 			if err != nil {
 				fmt.Println("索引创建失败:", err)
 			}
@@ -213,16 +211,31 @@ func loadData(maxCount int) Index {
 			fmt.Println("非gjson格式:", lineStr)
 		}
 
-		count++
+		if count >= maxCount {
+			break
+		}
 
 	}
+
 	fmt.Println("创建成功，记录数:", count)
+	countList := GetDBNode().GetCount("testdb")
+	fmt.Println("数据库记录数:", countList)
+
 	return index
 }
 
 func TestStart(t *testing.T) {
-	text := `电压变送器\DC0-99mV DC4-20mA DC220V FPD-1\国产`
+	text := `水轮机\HL-LJ-105\225000kW\550000\225000\92`
 	records, err := db.Find(text)
+	if err != nil {
+		fmt.Println("TestStart 发生错误:", err)
+	}
+	fmt.Println(records)
+}
+
+func TestDBNode_Find(t *testing.T) {
+	text := `水轮机\HL-LJ-105\225000kW\550000\225000\92`
+	records, err := dbNode.Find("testdb", text)
 	if err != nil {
 		fmt.Println("TestStart 发生错误:", err)
 	}

@@ -9,9 +9,16 @@ import (
 )
 
 func main() {
+
 	config.LoadSettings("/opt/test/config/test_case1.txt", func(config *config.Config) {
-		shardeddb.LoadLookupJob(config)
+		shardeddb.LoadLookupJob(config, nil)
 	})
+
+	//dbNode,err := shardeddb.NewDBNode(false)
+	//if err != nil{
+	//	fmt.Println(err)
+	//}
+
 	clbt := collaborator.NewCollaborator(3)
 	jobInfo := &interfaces.JobInfo{}
 	jobInfo.Handler = "LookupJob"
