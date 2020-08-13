@@ -21,21 +21,21 @@ func TestTrie(t *testing.T) {
 }
 
 func TestTrieChildren(t *testing.T) {
-	trie := NewTrie()
-	s1 := "1"
-	trie.Insert(Prefix("AB"), Item(&NodeItem{Key: s1}))
-
-	s2 := "2"
-	trie.Insert(Prefix("ABD2"), Item(&NodeItem{Key: s2}))
-
-	s3 := "3"
-	trie.Insert(Prefix("ABE3"), Item(&NodeItem{Key: s3}))
-
-	s4 := "4"
-	trie.Insert(Prefix("BAE3"), Item(&NodeItem{Key: s4}))
-
-	result := trie.FindItems("AB")
-	fmt.Println(result)
+	//trie := NewTrie()
+	//s1 := "1"
+	//trie.Insert(Prefix("AB"), Item(&NodeItem{Key: s1}))
+	//
+	//s2 := "2"
+	//trie.Insert(Prefix("ABD2"), Item(&NodeItem{Key: s2}))
+	//
+	//s3 := "3"
+	//trie.Insert(Prefix("ABE3"), Item(&NodeItem{Key: s3}))
+	//
+	//s4 := "4"
+	//trie.Insert(Prefix("BAE3"), Item(&NodeItem{Key: s4}))
+	//
+	//result := trie.FindItems("AB")
+	//fmt.Println(result)
 
 	//trie.VisitSubtree(Prefix("AB"), func(prefix Prefix, item Item) error {
 	//	fmt.Println(string(prefix))
@@ -93,4 +93,17 @@ func TestTrieItem(t *testing.T) {
 	p1 = &s1
 	*p1 = "bbb"
 	fmt.Println(s1)
+}
+
+func TestTrie_Append(t *testing.T) {
+	trie := NewTrie()
+	trie.Append(Prefix("ABC"), "1001", true)
+	trie.Append(Prefix("ABC"), "1002", true)
+	trie.Append(Prefix("ABC"), "1003", true)
+	result, _ := trie.Find(Prefix("ABC"))
+	fmt.Println("删除之前:", result)
+	trie.DelItem("1002")
+	result, _ = trie.Find(Prefix("ABC"))
+	fmt.Println("删除之后:", result)
+
 }

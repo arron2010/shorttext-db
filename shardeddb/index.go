@@ -34,9 +34,14 @@ type keywordIndex struct {
 func (k *keywordIndex) findOriginalItems(keyWords []config.Text) config.TextSet {
 	result := make(config.TextSet)
 	for _, word := range keyWords {
-		item, found := k.dictionary.Find(trie.Prefix(word))
+		dataItem, found := k.dictionary.Find(trie.Prefix(word))
+		item := dataItem.(map[string]bool)
 		if found {
-			for _, itemKey := range item {
+			for itemKey, flag := range item {
+				//当关键字关联的记录ID为无效状态的时候，直接忽略
+				if !flag {
+					continue
+				}
 				w, ok := result[itemKey]
 				if ok {
 					result[itemKey] = w + len(word)
@@ -73,9 +78,14 @@ func (k *keywordIndex) Create(prefix string, key string) error {
 	if err != nil {
 		return err
 	}
+	//先删除已存在数据主键
+	k.dictionary.DelItem(key)
+
+	//建立关键字与数据主键的关联
 	for _, v := range parsed {
-		k.dictionary.Append(trie.Prefix(v), key)
+		k.dictionary.Append(trie.Prefix(v), key, true)
 	}
+
 	return nil
 }
 

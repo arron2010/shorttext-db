@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/xp/shorttext-db/config"
 	"io"
 	"sort"
 	"strings"
@@ -26,7 +25,7 @@ type NodeItem struct {
 }
 
 type (
-	Item        []string
+	Item        interface{} //map[string]bool //key表示记录ID, bool记录是否有效
 	Prefix      []rune
 	VisitorFunc func(prefix Prefix, item Item) error
 )
@@ -41,14 +40,21 @@ type Trie struct {
 	maxPrefixPerNode         int
 	maxChildrenPerSparseNode int
 	children                 childList
+	self                     *Trie
 	//foundCache map[string]*Trie
 }
 
-func NewTrie() *Trie {
+func innerNewTrie() *Trie {
 	trie := &Trie{}
 	trie.maxPrefixPerNode = DEFAULT_MAX_PREFIX_PERNODE
 	trie.maxChildrenPerSparseNode = DEFAULT_MAX_CHILDREN_PER_SPARSENODE
 	trie.children = newSparseChildList(trie.maxChildrenPerSparseNode)
+	return trie
+}
+
+func NewTrie() *Trie {
+	trie := innerNewTrie()
+	trie.self = innerNewTrie()
 	return trie
 }
 
@@ -78,6 +84,31 @@ func (trie *Trie) Set(key Prefix, item Item) {
 //func (trie *Trie)Append(key Prefix, item Item){
 //	trie.put(key, item, false)
 //}
+
+/*
+删除与item有关的关键字
+*/
+func (trie *Trie) DelItem(item string) error {
+	var (
+		found    bool
+		leftover Prefix
+		node     *Trie
+	)
+	_, node, found, leftover = trie.self.findSubtree(Prefix(item))
+
+	if !found || len(leftover) != 0 {
+		return nil
+	}
+	if node.item == nil {
+		return nil
+	}
+	foundItems := node.item.([]*Trie)
+	for _, dataNode := range foundItems {
+		itemMap := dataNode.item.(map[string]bool)
+		itemMap[item] = false
+	}
+	return nil
+}
 
 func (trie *Trie) Find(key Prefix) (item Item, result bool) {
 	var (
@@ -135,17 +166,17 @@ func (trie *Trie) total() int {
 /*
 找出包含word的数据项
 */
-func (trie *Trie) FindItems(word string, length int) config.TextSet {
-	prefix := Prefix(word)
-	result := make(map[string]int)
-	trie.VisitSubtree(prefix, func(prefix Prefix, item Item) error {
-		for _, v := range item {
-			result[v] = length
-		}
-		return nil
-	})
-	return result
-}
+//func (trie *Trie) FindItems(word string, length int) config.TextSet {
+//	prefix := Prefix(word)
+//	result := make(map[string]int)
+//	trie.VisitSubtree(prefix, func(prefix Prefix, item Item) error {
+//		for _, v := range item {
+//			result[v] = length
+//		}
+//		return nil
+//	})
+//	return result
+//}
 
 func (trie *Trie) VisitSubtree(prefix Prefix, visitor VisitorFunc) error {
 	if prefix == nil {
@@ -350,7 +381,7 @@ func (trie *Trie) put(key Prefix, item Item, replace bool) (inserted bool) {
 SplitPrefix:
 	child = new(Trie)
 	*child = *node
-	*node = *NewTrie()
+	*node = *innerNewTrie()
 	node.prefix = child.prefix[:common]
 	child.prefix = child.prefix[common:]
 	child = child.compact()
@@ -358,7 +389,7 @@ SplitPrefix:
 
 AppendChild:
 	for len(key) != 0 {
-		child := NewTrie()
+		child := innerNewTrie()
 		if len(key) <= trie.maxPrefixPerNode {
 			child.prefix = key
 			node.children = node.children.add(child)
@@ -382,7 +413,7 @@ InsertItem:
 	return false
 }
 
-func (trie *Trie) Append(key Prefix, item string) (inserted bool) {
+func (trie *Trie) Append(key Prefix, item Item, isDataItem bool) (inserted bool) {
 	if key == nil {
 		panic(ErrNilPrefix)
 	}
@@ -425,7 +456,7 @@ func (trie *Trie) Append(key Prefix, item string) (inserted bool) {
 SplitPrefix:
 	child = new(Trie)
 	*child = *node
-	*node = *NewTrie()
+	*node = *innerNewTrie()
 	node.prefix = child.prefix[:common]
 	child.prefix = child.prefix[common:]
 	child = child.compact()
@@ -433,7 +464,7 @@ SplitPrefix:
 
 AppendChild:
 	for len(key) != 0 {
-		child := NewTrie()
+		child := innerNewTrie()
 		if len(key) <= trie.maxPrefixPerNode {
 			child.prefix = key
 			node.children = node.children.add(child)
@@ -448,10 +479,30 @@ AppendChild:
 	}
 
 InsertItem:
-	if node.item == nil {
-		node.item = make([]string, 0, 4)
+	if isDataItem {
+		strKey := item.(string)
+		if node.item == nil {
+			node.item = make(map[string]bool)
+		}
+		itemMap := node.item.(map[string]bool)
+		itemMap[strKey] = true
+		node.item = itemMap
+		trie.self.Append(Prefix(strKey), node, false)
+	} else {
+		if node.item == nil {
+			node.item = make([]*Trie, 0, 4)
+		}
+		itemList := node.item.([]*Trie)
+		itemList = append(itemList, item.(*Trie))
+		node.item = itemList
 	}
-	node.item = append(node.item, item)
+
+	//if del{
+	//	node.item[item] = false
+	//}else{
+	//	node.item[item] = true
+	//}
+
 	return true
 }
 
