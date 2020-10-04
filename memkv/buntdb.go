@@ -135,7 +135,7 @@ type exctx struct {
 }
 
 // Default number of btree degrees
-const btreeDegrees = 64
+const btreeDegrees = 32
 
 // Open opens a database at the provided path.
 // If the file does not exist then it will be created automatically.
@@ -967,20 +967,21 @@ func (db *DB) Find(key Key) []*DbItem {
 	})
 	return result
 }
+
 func (db *DB) Scan(startKey Key, endKey Key) []*DbItem {
-	var start, stop Key
-	if len(startKey) > 0 {
-		start = mvccEncode(startKey, lockVer)
-	}
-	if len(endKey) > 0 {
-		stop = mvccEncode(endKey, lockVer)
-	}
+	//var start, stop Key
+	//if len(startKey) > 0 {
+	//	start = mvccEncode(startKey, lockVer)
+	//}
+	//if len(endKey) > 0 {
+	//	stop = mvccEncode(endKey, lockVer)
+	//}
 
 	result := make([]*DbItem, 0)
 	tx := &Tx{
 		db: db, writable: true,
 	}
-	tx.scanKeys(start, stop, func(dbi *DbItem) bool {
+	tx.scanKeys(startKey, endKey, func(dbi *DbItem) bool {
 		result = append(result, dbi)
 		return true
 	})
@@ -1279,6 +1280,7 @@ type dbItemOpts struct {
 type DbItem struct {
 	key     Key
 	val     Value
+	ts      uint64
 	opts    *dbItemOpts // optional meta information
 	keyless bool        // keyless item for scanning
 
@@ -1724,18 +1726,18 @@ func (tx *Tx) scanKeys(start Key, stop Key,
 //	return result
 //}
 
-func (tx *Tx) newIterator(start Key) Iterator {
-	result := &memdbIterator{}
-
-	tx.scanKeys(start, nil, func(dbi *DbItem) bool {
-		result.cursor = tx.db.keys.Cursor()
-		result.cursor.Seek(dbi)
-		result.validated = true
-		result.dbi = dbi
-		return false
-	})
-	return result
-}
+//func (tx *Tx) newIterator(start Key) Iterator {
+//	result := &memdbIterator{}
+//
+//	tx.scanKeys(start, nil, func(dbi *DbItem) bool {
+//		result.cursor = tx.db.keys.Cursor()
+//		result.cursor.Seek(dbi)
+//		result.validated = true
+//		result.dbi = dbi
+//		return false
+//	})
+//	return result
+//}
 
 // Match returns true if the specified key matches the pattern. This is a very
 // simple pattern matcher where '*' matches on any number characters and '?'

@@ -1,36 +1,12 @@
 package memkv
 
-type region struct {
-	db          MemDB
-	recordCount uint64
-}
-type Batch struct {
-	addedBuf   []*DbItem
-	deletedBuf []Key
-}
-
-func NewBatch() *Batch {
-
-	batch := &Batch{}
-	batch.addedBuf = make([]*DbItem, 0)
-	batch.deletedBuf = make([]Key, 0)
-
-	return batch
-}
-func (b *Batch) Put(key Key, val Value) {
-	b.addedBuf = append(b.addedBuf, &DbItem{key: key, val: val})
-}
-func (b *Batch) Delete(key Key) {
-	b.deletedBuf = append(b.deletedBuf, key)
-}
-
 type DBProxy struct {
 	dbs      map[int]MemDB
 	dbCount  int
 	maxCount uint64
 }
 
-func NewDBProxy(dbCount int, maxCount uint64) (*DBProxy, error) {
+func NewDBProxy(dbCount int, maxCount uint64) (KVClient, error) {
 	instance := &DBProxy{}
 	instance.dbs = make(map[int]MemDB)
 	var err error
@@ -75,30 +51,54 @@ func (d *DBProxy) Close() {
 	db.Close()
 }
 
-func (d *DBProxy) NewIterator(start Key) Iterator {
+func (d *DBProxy) NewIterator(key Key) Iterator {
 	db := d.dbs[1]
-	data := db.Find(start)
-	iter := NewListIterator(data)
+	stop := mvccEncode(key, 0)
+	start := mvccEncode(key, lockVer)
+
+	data := db.Scan(start, stop)
+	iter := NewListIterator(data, false)
 	return iter
+}
+
+func (d *DBProxy) scan(db MemDB, startKey Key, endKey Key) []*DbItem {
+	var start, stop Key
+	if len(startKey) > 0 {
+		start = mvccEncode(startKey, lockVer)
+	}
+	if len(endKey) > 0 {
+		stop = mvccEncode(endKey, lockVer)
+	}
+	data := db.Scan(start, stop)
+	return data
 }
 
 func (d *DBProxy) NewScanIterator(startKey Key, endKey Key) Iterator {
 	db := d.dbs[1]
-	data := db.Scan(startKey, endKey)
-	iter := NewListIterator(data)
+	data := d.scan(db, startKey, endKey)
+	iter := NewListIterator(data, false)
+	return iter
+}
+
+func (d *DBProxy) NewDescendIterator(startKey Key, endKey Key) Iterator {
+	db := d.dbs[1]
+	data := d.scan(db, startKey, endKey)
+	iter := NewListIterator(data, true)
 	return iter
 }
 
 func (d *DBProxy) Write(batch *Batch) error {
 	var err error
-	for _, item := range batch.addedBuf {
-		err = d.Put(item)
+	for _, added := range batch.addedBuf {
+		added.key = mvccEncode(added.key, added.ts)
+		err = d.Put(added)
 		if err != nil {
 			return err
 		}
 	}
-	for _, key := range batch.deletedBuf {
-		err = d.Delete(key)
+	for _, deleted := range batch.deletedBuf {
+		deleted.key = mvccEncode(deleted.key, deleted.ts)
+		err = d.Delete(deleted.key)
 		if err != nil {
 			return err
 		}

@@ -6,16 +6,24 @@ import (
 )
 
 type ListIterator struct {
-	data   []*DbItem
-	cursor int
+	data    []*DbItem
+	cursor  int
+	descend bool
 }
 
-func NewListIterator(data []*DbItem) *ListIterator {
+func NewListIterator(data []*DbItem, descend bool) *ListIterator {
 	iter := &ListIterator{data: data}
-	if len(data) > 0 {
-		iter.cursor = 0
-	} else {
+	if len(data) == 0 {
 		iter.cursor = -1
+	}
+	if !descend {
+		if len(data) > 0 {
+			iter.cursor = 0
+		}
+	} else {
+		if len(data) > 0 {
+			iter.cursor = len(data) - 1
+		}
 	}
 	return iter
 }
@@ -24,8 +32,13 @@ func (l *ListIterator) Next() {
 	l.cursor = l.cursor + 1
 }
 
+func (l *ListIterator) Prev() bool {
+	l.cursor = l.cursor - 1
+	return l.Valid()
+}
+
 func (l *ListIterator) Valid() bool {
-	if len(l.data) <= 0 || l.cursor >= len(l.data) {
+	if len(l.data) <= 0 || l.cursor < 0 || l.cursor >= len(l.data) {
 		return false
 	}
 	return true
