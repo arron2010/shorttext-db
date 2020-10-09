@@ -468,10 +468,10 @@ func (db *DB) insertIntoDatabase(item *DbItem) *DbItem {
 		// A previous item was removed from the keys tree. Let's
 		// fully delete this item from all indexes.
 		pdbi = prev.(*DbItem)
-		if pdbi.opts != nil && pdbi.opts.ex {
-			// Remove it from the exipres tree.
-			db.exps.Delete(pdbi)
-		}
+		//if pdbi.opts != nil && pdbi.opts.ex {
+		//	// Remove it from the exipres tree.
+		//	db.exps.Delete(pdbi)
+		//}
 		for _, idx := range db.idxs {
 			if idx.btr != nil {
 				// Remove it from the btree index.
@@ -483,11 +483,11 @@ func (db *DB) insertIntoDatabase(item *DbItem) *DbItem {
 			//}
 		}
 	}
-	if item.opts != nil && item.opts.ex {
-		// The new item has eviction options. Add it to the
-		// expires tree
-		db.exps.ReplaceOrInsert(item)
-	}
+	//if item.opts != nil && item.opts.ex {
+	//	// The new item has eviction options. Add it to the
+	//	// expires tree
+	//	db.exps.ReplaceOrInsert(item)
+	//}
 	for _, idx := range db.idxs {
 		//if !idx.match(item.key) {
 		//	continue
@@ -516,10 +516,10 @@ func (db *DB) deleteFromDatabase(item *DbItem) *DbItem {
 	prev := db.keys.Delete(item)
 	if prev != nil {
 		pdbi = prev.(*DbItem)
-		if pdbi.opts != nil && pdbi.opts.ex {
-			// Remove it from the exipres tree.
-			db.exps.Delete(pdbi)
-		}
+		//if pdbi.opts != nil && pdbi.opts.ex {
+		//	// Remove it from the exipres tree.
+		//	db.exps.Delete(pdbi)
+		//}
 		for _, idx := range db.idxs {
 			if idx.btr != nil {
 				// Remove it from the btree index.
@@ -564,12 +564,12 @@ func (db *DB) backgroundManager() {
 				}
 			}
 			// produce a list of expired items that need removing
-			db.exps.AscendLessThan(&DbItem{
-				opts: &dbItemOpts{ex: true, exat: time.Now()},
-			}, func(item btree.Item) bool {
-				expired = append(expired, item.(*DbItem))
-				return true
-			})
+			//db.exps.AscendLessThan(&DbItem{
+			//	opts: &dbItemOpts{ex: true, exat: time.Now()},
+			//}, func(item btree.Item) bool {
+			//	expired = append(expired, item.(*DbItem))
+			//	return true
+			//})
 			if onExpired == nil && onExpiredSync == nil {
 				for _, itm := range expired {
 					if _, err := tx.Delete(itm.key); err != nil {
@@ -863,29 +863,31 @@ func (db *DB) readLoad(rd io.Reader, modTime time.Time) error {
 			if len(parts) < 3 || len(parts) == 4 || len(parts) > 5 {
 				return ErrInvalid
 			}
-			if len(parts) == 5 {
-				if strings.ToLower(parts[3]) != "ex" {
-					return ErrInvalid
-				}
-				ex, err := strconv.ParseInt(parts[4], 10, 64)
-				if err != nil {
-					return err
-				}
-				now := time.Now()
-				dur := (time.Duration(ex) * time.Second) - now.Sub(modTime)
-				if dur > 0 {
-					db.insertIntoDatabase(&DbItem{
-						key: []byte(parts[1]),
-						val: []byte(parts[2]),
-						opts: &dbItemOpts{
-							ex:   true,
-							exat: now.Add(dur),
-						},
-					})
-				}
-			} else {
-				db.insertIntoDatabase(&DbItem{key: []byte(parts[1]), val: []byte(parts[2])})
-			}
+			db.insertIntoDatabase(&DbItem{key: []byte(parts[1]), val: []byte(parts[2])})
+
+			//if len(parts) == 5 {
+			//	if strings.ToLower(parts[3]) != "ex" {
+			//		return ErrInvalid
+			//	}
+			//	ex, err := strconv.ParseInt(parts[4], 10, 64)
+			//	if err != nil {
+			//		return err
+			//	}
+			//	now := time.Now()
+			//	dur := (time.Duration(ex) * time.Second) - now.Sub(modTime)
+			//	if dur > 0 {
+			//		db.insertIntoDatabase(&DbItem{
+			//			key: []byte(parts[1]),
+			//			val: []byte(parts[2]),
+			//			opts: &dbItemOpts{
+			//				ex:   true,
+			//				exat: now.Add(dur),
+			//			},
+			//		})
+			//	}
+			//} else {
+			//	db.insertIntoDatabase(&DbItem{key: []byte(parts[1]), val: []byte(parts[2])})
+			//}
 		} else if (parts[0][0] == 'd' || parts[0][0] == 'D') &&
 			(parts[0][1] == 'e' || parts[0][1] == 'E') &&
 			(parts[0][2] == 'l' || parts[0][2] == 'L') {
@@ -930,7 +932,7 @@ func (db *DB) Put(item *DbItem) (err error) {
 	tx := &Tx{
 		db: db, writable: true,
 	}
-	_, _, err = tx.Set(item.key, item.val, nil)
+	_, _, err = tx.Set(item.key, item.val)
 	return err
 }
 func (db *DB) Get(key Key) (val *DbItem) {
@@ -948,8 +950,8 @@ func (db *DB) Delete(key Key) (err error) {
 	tx := &Tx{
 		db: db, writable: true,
 	}
-	tx.Delete(key)
-	return nil
+	_, err = tx.Delete(key)
+	return err
 }
 
 const lockVer uint64 = math.MaxUint64
@@ -1278,11 +1280,11 @@ type dbItemOpts struct {
 }
 
 type DbItem struct {
-	key     Key
-	val     Value
-	ts      uint64
-	opts    *dbItemOpts // optional meta information
-	keyless bool        // keyless item for scanning
+	key Key
+	val Value
+	//	ts      uint64
+	//opts    *dbItemOpts // optional meta information
+	//keyless bool        // keyless item for scanning
 
 }
 
@@ -1323,20 +1325,25 @@ func appendBulkBytes(buf []byte, s []byte) []byte {
 
 // writeSetTo writes an item as a single SET record to the a bufio Writer.
 func (dbi *DbItem) writeSetTo(buf []byte) []byte {
-	if dbi.opts != nil && dbi.opts.ex {
-		ex := dbi.opts.exat.Sub(time.Now()) / time.Second
-		buf = appendArray(buf, 5)
-		buf = appendBulkString(buf, "set")
-		buf = appendBulkBytes(buf, dbi.key)
-		buf = appendBulkBytes(buf, dbi.val)
-		buf = appendBulkString(buf, "ex")
-		buf = appendBulkString(buf, strconv.FormatUint(uint64(ex), 10))
-	} else {
-		buf = appendArray(buf, 3)
-		buf = appendBulkString(buf, "set")
-		buf = appendBulkBytes(buf, dbi.key)
-		buf = appendBulkBytes(buf, dbi.val)
-	}
+	//if dbi.opts != nil && dbi.opts.ex {
+	//	ex := dbi.opts.exat.Sub(time.Now()) / time.Second
+	//	buf = appendArray(buf, 5)
+	//	buf = appendBulkString(buf, "set")
+	//	buf = appendBulkBytes(buf, dbi.key)
+	//	buf = appendBulkBytes(buf, dbi.val)
+	//	buf = appendBulkString(buf, "ex")
+	//	buf = appendBulkString(buf, strconv.FormatUint(uint64(ex), 10))
+	//} else {
+	//	buf = appendArray(buf, 3)
+	//	buf = appendBulkString(buf, "set")
+	//	buf = appendBulkBytes(buf, dbi.key)
+	//	buf = appendBulkBytes(buf, dbi.val)
+	//}
+
+	buf = appendArray(buf, 3)
+	buf = appendBulkString(buf, "set")
+	buf = appendBulkBytes(buf, dbi.key)
+	buf = appendBulkBytes(buf, dbi.val)
 	return buf
 }
 
@@ -1351,7 +1358,8 @@ func (dbi *DbItem) writeDeleteTo(buf []byte) []byte {
 // expired evaluates id the item has expired. This will always return false when
 // the item does not have `opts.ex` set to true.
 func (dbi *DbItem) expired() bool {
-	return dbi.opts != nil && dbi.opts.ex && time.Now().After(dbi.opts.exat)
+	return false
+	//return dbi.opts != nil && dbi.opts.ex && time.Now().After(dbi.opts.exat)
 }
 
 // MaxTime from http://stackoverflow.com/questions/25065055#32620397
@@ -1361,12 +1369,12 @@ var maxTime = time.Unix(1<<63-62135596801, 999999999)
 
 // expiresAt will return the time when the item will expire. When an item does
 // not expire `maxTime` is used.
-func (dbi *DbItem) expiresAt() time.Time {
-	if dbi.opts == nil || !dbi.opts.ex {
-		return maxTime
-	}
-	return dbi.opts.exat
-}
+//func (dbi *DbItem) expiresAt() time.Time {
+//	if dbi.opts == nil || !dbi.opts.ex {
+//		return maxTime
+//	}
+//	return dbi.opts.exat
+//}
 
 // Less determines if a b-tree item is less than another. This is required
 // for ordering, inserting, and deleting items from a b-tree. It's important
@@ -1384,12 +1392,12 @@ func (dbi *DbItem) Less(item btree.Item, ctx interface{}) bool {
 	switch ctx := ctx.(type) {
 	case *exctx:
 		// The expires b-tree formula
-		if dbi2.expiresAt().After(dbi.expiresAt()) {
-			return true
-		}
-		if dbi.expiresAt().After(dbi2.expiresAt()) {
-			return false
-		}
+		//if dbi2.expiresAt().After(dbi.expiresAt()) {
+		//	return true
+		//}
+		//if dbi.expiresAt().After(dbi2.expiresAt()) {
+		//	return false
+		//}
 	case *index:
 		if ctx.less != nil {
 			// Using an index
@@ -1403,11 +1411,11 @@ func (dbi *DbItem) Less(item btree.Item, ctx interface{}) bool {
 	}
 
 	// Always fall back to the key comparison. This creates absolute uniqueness.
-	if dbi.keyless {
-		return false
-	} else if dbi2.keyless {
-		return true
-	}
+	//if dbi.keyless {
+	//	return false
+	//} else if dbi2.keyless {
+	//	return true
+	//}
 	return bytes.Compare(dbi.key, dbi2.key) < 0
 }
 
@@ -1476,7 +1484,7 @@ func (tx *Tx) GetRect(index string) (func(s string) (min, max []float64),
 //
 // Only a writable transaction can be used with this operation.
 // This operation is not allowed during iterations such as Ascend* & Descend*.
-func (tx *Tx) Set(key Key, value Value, opts *SetOptions) (previousValue Value,
+func (tx *Tx) Set(key Key, value Value) (previousValue Value,
 	replaced bool, err error) {
 	if tx.db == nil {
 		return nil, false, ErrTxClosed
@@ -1486,13 +1494,13 @@ func (tx *Tx) Set(key Key, value Value, opts *SetOptions) (previousValue Value,
 
 	var item *DbItem
 	item = &DbItem{key: key, val: value}
-	if opts != nil {
-		if opts.Expires {
-			// The caller is requesting that this item expires. Convert the
-			// TTL to an absolute time and bind it to the item.
-			item.opts = &dbItemOpts{ex: true, exat: time.Now().Add(opts.TTL)}
-		}
-	}
+	//if opts != nil {
+	//	if opts.Expires {
+	//		// The caller is requesting that this item expires. Convert the
+	//		// TTL to an absolute time and bind it to the item.
+	//		item.opts = &dbItemOpts{ex: true, exat: time.Now().Add(opts.TTL)}
+	//	}
+	//}
 	// Insert the item into the keys tree.
 	prev := tx.db.insertIntoDatabase(item)
 
@@ -1591,20 +1599,20 @@ func (tx *Tx) Delete(key Key) (val Value, err error) {
 // A negative duration will be returned for items that do not have an
 // expiration.
 func (tx *Tx) TTL(key Key) (time.Duration, error) {
-	if tx.db == nil {
-		return 0, ErrTxClosed
-	}
-	item := tx.db.get(key)
-	if item == nil {
-		return 0, ErrNotFound
-	} else if item.opts == nil || !item.opts.ex {
-		return -1, nil
-	}
-	dur := item.opts.exat.Sub(time.Now())
-	if dur < 0 {
-		return 0, ErrNotFound
-	}
-	return dur, nil
+	//if tx.db == nil {
+	//	return 0, ErrTxClosed
+	//}
+	//item := tx.db.get(key)
+	//if item == nil {
+	//	return 0, ErrNotFound
+	//} else if item.opts == nil || !item.opts.ex {
+	//	return -1, nil
+	//}
+	//dur := item.opts.exat.Sub(time.Now())
+	//if dur < 0 {
+	//	return 0, ErrNotFound
+	//}
+	return 0, nil
 }
 
 // scan iterates through a specified index and calls user-defined iterator
@@ -1647,10 +1655,10 @@ func (tx *Tx) scan(desc, gt, lt bool, index string, start, stop Value,
 	if gt || lt {
 		itemA = &DbItem{val: start}
 		itemB = &DbItem{val: stop}
-		if desc {
-			itemA.keyless = true
-			itemB.keyless = true
-		}
+		//if desc {
+		//	itemA.keyless = true
+		//	itemB.keyless = true
+		//}
 
 		//if index == "" {
 		//	itemA = &DbItem{key: start}

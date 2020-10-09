@@ -23,21 +23,23 @@ func NewDBProxy(dbCount int, maxCount uint64) (KVClient, error) {
 	}
 	return instance, err
 }
-func (d *DBProxy) Put(item *DbItem) (err error) {
+func (d *DBProxy) put(item *DbItem, ts uint64) (err error) {
 	db := d.dbs[1]
+	item.key = mvccEncode(item.key, ts)
 	err = db.Put(item)
 	return err
 }
 
-func (d *DBProxy) Get(key Key) (val *DbItem) {
+func (d *DBProxy) delete(item *DbItem, ts uint64) (err error) {
+	db := d.dbs[1]
+	item.key = mvccEncode(item.key, ts)
+	return db.Delete(item.key)
+}
+
+func (d *DBProxy) get(key Key) (val *DbItem) {
 	db := d.dbs[1]
 	val = db.Get(key)
 	return val
-}
-
-func (d *DBProxy) Delete(key Key) (err error) {
-	db := d.dbs[1]
-	return db.Delete(key)
 }
 
 //func (d *DBProxy)Range(start,stop Key)[]*DbItem{
@@ -90,15 +92,13 @@ func (d *DBProxy) NewDescendIterator(startKey Key, endKey Key) Iterator {
 func (d *DBProxy) Write(batch *Batch) error {
 	var err error
 	for _, added := range batch.addedBuf {
-		added.key = mvccEncode(added.key, added.ts)
-		err = d.Put(added)
+		err = d.put(added.dbItem, added.ts)
 		if err != nil {
 			return err
 		}
 	}
 	for _, deleted := range batch.deletedBuf {
-		deleted.key = mvccEncode(deleted.key, deleted.ts)
-		err = d.Delete(deleted.key)
+		err = d.delete(deleted.dbItem, deleted.ts)
 		if err != nil {
 			return err
 		}
