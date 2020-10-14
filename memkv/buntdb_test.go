@@ -2,11 +2,8 @@ package memkv
 
 import (
 	"bytes"
-	"encoding/binary"
-	"encoding/json"
 	"fmt"
 	"github.com/tidwall/gjson"
-	"strconv"
 	"testing"
 	"time"
 )
@@ -88,42 +85,42 @@ var gDB *DB
 
 func TestDB_Indexes09(t *testing.T) {
 
-	gDB, _ = Open(":memory:")
-	const NUM = 10
-
-	//gDB.CreateIndex("Dim2_Dim3", "*", IndexJSON("Dim2"))
-	for i := 1; i <= NUM; i++ {
-		k := uint64(i)
-		item := &Dimension{}
-		item.Dim1 = k
-		item.Dim2 = "AAA" + strconv.Itoa(i)
-
-		val, _ := json.Marshal(item)
-		//strVal := string(val)
-		buf := make([]byte, 8)
-		binary.BigEndian.PutUint64(buf, k)
-		//strKey := string(buf)
-		gDB.Put(&DbItem{key: buf, val: val})
-	}
-	temp := make([]byte, 8)
-	binary.BigEndian.PutUint64(temp, 1)
-	key1 := mvccEncode(temp, lockVer)
-	gDB.Put(&DbItem{key: key1, val: key1})
-
-	temp = make([]byte, 8)
-	binary.BigEndian.PutUint64(temp, 1)
-	key2 := mvccEncode(temp, 3)
-	gDB.Put(&DbItem{key: key2, val: key2})
-
-	temp = make([]byte, 8)
-	binary.BigEndian.PutUint64(temp, 1)
-
-	result := gDB.Find(temp)
-	//stop := make([]byte, 8)
-	//binary.BigEndian.PutUint64(stop, 8)
-	//result := gDB.Range(start,stop)
-	fmt.Println(result)
-	//iterator := gDB.NewIterator(buf)
+	//gDB, _ = Open(":memory:")
+	//const NUM = 10
+	//
+	////gDB.CreateIndex("Dim2_Dim3", "*", IndexJSON("Dim2"))
+	//for i := 1; i <= NUM; i++ {
+	//	k := uint64(i)
+	//	item := &Dimension{}
+	//	item.Dim1 = k
+	//	item.Dim2 = "AAA" + strconv.Itoa(i)
+	//
+	//	val, _ := json.Marshal(item)
+	//	//strVal := string(val)
+	//	buf := make([]byte, 8)
+	//	binary.BigEndian.PutUint64(buf, k)
+	//	//strKey := string(buf)
+	//	gDB.Put(&DbItem{key: buf, val: val})
+	//}
+	//temp := make([]byte, 8)
+	//binary.BigEndian.PutUint64(temp, 1)
+	//key1 := mvccEncode(temp, lockVer)
+	//gDB.Put(&DbItem{key: key1, val: key1})
+	//
+	//temp = make([]byte, 8)
+	//binary.BigEndian.PutUint64(temp, 1)
+	//key2 := mvccEncode(temp, 3)
+	//gDB.Put(&DbItem{key: key2, val: key2})
+	//
+	//temp = make([]byte, 8)
+	//binary.BigEndian.PutUint64(temp, 1)
+	//
+	//result := gDB.Find(temp)
+	////stop := make([]byte, 8)
+	////binary.BigEndian.PutUint64(stop, 8)
+	////result := gDB.Range(start,stop)
+	//fmt.Println(result)
+	////iterator := gDB.NewIterator(buf)
 	//iterator.Next()
 	//val := gDB.Get(buf)
 	//fmt.Println(string(val))
@@ -215,6 +212,8 @@ func TestDB_Indexes04(t *testing.T) {
 }
 
 func TestDB_Indexes05(t *testing.T) {
+	max := ^uint(0)
+	fmt.Println(max)
 	//testLoadData(t)
 	//var err error
 	//timer := NewTimer()

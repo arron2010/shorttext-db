@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
+	"github.com/xp/shorttext-db/memkv/proto"
 	"io"
 	"math"
 	"os"
@@ -928,21 +929,22 @@ func (db *DB) load() error {
 	db.lastaofsz = int(pos)
 	return nil
 }
-func (db *DB) Put(item *DbItem) (err error) {
+func (db *DB) Put(item *proto.DbItem) (err error) {
 	tx := &Tx{
 		db: db, writable: true,
 	}
-	_, _, err = tx.Set(item.key, item.val)
+	_, _, err = tx.Set(item.Key, item.Value)
 	return err
 }
-func (db *DB) Get(key Key) (val *DbItem) {
-	val = &DbItem{}
+func (db *DB) Get(key Key) (val *proto.DbItem) {
+	val = &proto.DbItem{}
 	tx := &Tx{
 		db: db, writable: true,
 	}
 	item := tx.db.get(key)
 	if item != nil {
-		val = item
+		val.Key = item.key
+		val.Value = item.val
 	}
 	return val
 }
@@ -956,21 +958,21 @@ func (db *DB) Delete(key Key) (err error) {
 
 const lockVer uint64 = math.MaxUint64
 
-func (db *DB) Find(key Key) []*DbItem {
-	result := make([]*DbItem, 0)
+func (db *DB) Find(key Key) *proto.DbItems {
+	result := make([]*proto.DbItem, 0)
 	stop := mvccEncode(key, 0)
 	start := mvccEncode(key, lockVer)
 	tx := &Tx{
 		db: db, writable: true,
 	}
 	tx.scanKeys(start, stop, func(dbi *DbItem) bool {
-		result = append(result, dbi)
+		result = append(result, &proto.DbItem{Key: dbi.key, Value: dbi.val})
 		return true
 	})
-	return result
+	return &proto.DbItems{Items: result}
 }
 
-func (db *DB) Scan(startKey Key, endKey Key) []*DbItem {
+func (db *DB) Scan(startKey Key, endKey Key) *proto.DbItems {
 	//var start, stop Key
 	//if len(startKey) > 0 {
 	//	start = mvccEncode(startKey, lockVer)
@@ -979,16 +981,16 @@ func (db *DB) Scan(startKey Key, endKey Key) []*DbItem {
 	//	stop = mvccEncode(endKey, lockVer)
 	//}
 
-	result := make([]*DbItem, 0)
+	result := make([]*proto.DbItem, 0)
 	tx := &Tx{
 		db: db, writable: true,
 	}
 	tx.scanKeys(startKey, endKey, func(dbi *DbItem) bool {
-		result = append(result, dbi)
+		result = append(result, &proto.DbItem{Key: dbi.key, Value: dbi.val})
 		return true
 	})
 
-	return result
+	return &proto.DbItems{Items: result}
 }
 
 func (db *DB) GetByRange(start Key, stop Key) []*DbItem {

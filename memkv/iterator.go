@@ -2,27 +2,28 @@ package memkv
 
 import (
 	"github.com/xp/shorttext-db/btree"
+	"github.com/xp/shorttext-db/memkv/proto"
 	"github.com/xp/shorttext-db/utils"
 )
 
 type ListIterator struct {
-	data    []*DbItem
+	data    []*proto.DbItem
 	cursor  int
 	descend bool
 }
 
-func NewListIterator(data []*DbItem, descend bool) *ListIterator {
-	iter := &ListIterator{data: data}
-	if len(data) == 0 {
+func NewListIterator(data *proto.DbItems, descend bool) *ListIterator {
+	iter := &ListIterator{data: data.Items}
+	if len(iter.data) == 0 {
 		iter.cursor = -1
 	}
 	if !descend {
-		if len(data) > 0 {
+		if len(iter.data) > 0 {
 			iter.cursor = 0
 		}
 	} else {
-		if len(data) > 0 {
-			iter.cursor = len(data) - 1
+		if len(iter.data) > 0 {
+			iter.cursor = len(iter.data) - 1
 		}
 	}
 	return iter
@@ -46,14 +47,14 @@ func (l *ListIterator) Valid() bool {
 
 func (l *ListIterator) Key() []byte {
 	if l.cursor > -1 && l.cursor < len(l.data) {
-		return l.data[l.cursor].key
+		return l.data[l.cursor].Key
 	}
 	return nil
 }
 
 func (l *ListIterator) Value() []byte {
 	if l.cursor > -1 && l.cursor < len(l.data) {
-		return l.data[l.cursor].val
+		return l.data[l.cursor].Value
 	}
 	return nil
 }

@@ -1,0 +1,17 @@
+syntax = "proto3";
+package proto;
+
+message DbItem{
+    bytes   Key  = 1;
+    bytes   Value  = 2;
+}
+
+message DbQueryParam{
+    bytes  StartKey  = 1;
+    bytes  EndKey  = 2;
+}
+
+message DbItems{
+    repeated DbItem Items =1;
+}
+

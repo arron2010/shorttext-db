@@ -1,5 +1,7 @@
 package memkv
 
+import "github.com/xp/shorttext-db/memkv/proto"
+
 type DBProxy struct {
 	dbs      map[int]MemDB
 	dbCount  int
@@ -23,20 +25,20 @@ func NewDBProxy(dbCount int, maxCount uint64) (KVClient, error) {
 	}
 	return instance, err
 }
-func (d *DBProxy) put(item *DbItem, ts uint64) (err error) {
+func (d *DBProxy) put(item *proto.DbItem, ts uint64) (err error) {
 	db := d.dbs[1]
-	item.key = mvccEncode(item.key, ts)
+	item.Key = mvccEncode(item.Key, ts)
 	err = db.Put(item)
 	return err
 }
 
-func (d *DBProxy) delete(item *DbItem, ts uint64) (err error) {
+func (d *DBProxy) delete(item *proto.DbItem, ts uint64) (err error) {
 	db := d.dbs[1]
-	item.key = mvccEncode(item.key, ts)
-	return db.Delete(item.key)
+	item.Key = mvccEncode(item.Key, ts)
+	return db.Delete(item.Key)
 }
 
-func (d *DBProxy) get(key Key) (val *DbItem) {
+func (d *DBProxy) get(key Key) (val *proto.DbItem) {
 	db := d.dbs[1]
 	val = db.Get(key)
 	return val
@@ -55,15 +57,16 @@ func (d *DBProxy) Close() {
 
 func (d *DBProxy) NewIterator(key Key) Iterator {
 	db := d.dbs[1]
-	stop := mvccEncode(key, 0)
+
 	start := mvccEncode(key, lockVer)
+	stop := mvccEncode(key, 0)
 
 	data := db.Scan(start, stop)
 	iter := NewListIterator(data, false)
 	return iter
 }
 
-func (d *DBProxy) scan(db MemDB, startKey Key, endKey Key) []*DbItem {
+func (d *DBProxy) scan(db MemDB, startKey Key, endKey Key) *proto.DbItems {
 	var start, stop Key
 	if len(startKey) > 0 {
 		start = mvccEncode(startKey, lockVer)
