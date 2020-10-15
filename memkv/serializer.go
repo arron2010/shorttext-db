@@ -15,3 +15,6 @@ func unmarshalDbItem(buff []byte, dbItem *proto.DbItem) error {
 func unmarshalDbItems(buff []byte, dbItem *proto.DbItems) error {
 	return proto2.Unmarshal(buff, dbItem)
 }
+func marshalDbItems(dbItems *proto.DbItems) ([]byte, error) {
+	return proto2.Marshal(dbItems)
+}

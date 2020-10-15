@@ -10,13 +10,14 @@ import (
 	"github.com/xp/shorttext-db/memkv/proto"
 	"github.com/xp/shorttext-db/network"
 	"github.com/xp/shorttext-db/network/proxy"
-	"github.com/xp/shorttext-db/utils"
+	"sync/atomic"
 )
 
 type RemoteDBProxy struct {
-	clbt *collaborator.Collaborator
-	n    *proxy.NodeProxy
-	c    *chooser
+	clbt     *collaborator.Collaborator
+	n        *proxy.NodeProxy
+	c        *chooser
+	sequence uint64
 }
 
 func NewRemoteDBProxy() *RemoteDBProxy {
@@ -25,7 +26,9 @@ func NewRemoteDBProxy() *RemoteDBProxy {
 	n := proxy.NewNodeProxy(c.GetUrls(), config.GetConfig().LogLevel)
 	r.n = n
 	r.c = NewChooser()
+	r.c.masterId = uint32(n.Id)
 	r.c.SetBuckets(c.GetCardList())
+	r.sequence = 0
 	return r
 }
 func (r *RemoteDBProxy) NewIterator(key Key) Iterator {
@@ -72,20 +75,21 @@ func (r *RemoteDBProxy) NewDescendIterator(startKey Key, endKey Key) Iterator {
 func (r *RemoteDBProxy) put(item *proto.DbItem, ts uint64) (err error) {
 	var to uint64
 	var hash uint32
-	var force bool = false
-	if ts == lockVer {
-		force = true
-	}
-	to, hash = r.c.Choose(item.Key, force)
+	//var force bool = false
+	//if ts == lockVer {
+	//	force = true
+	//}
+	to, hash = r.c.Choose(item.Key, true)
+	logger.Infof("插入数据选择区域[%d %d]\n", to, hash)
 	item.Key = mvccEncode(item.Key, ts)
 	_, err = r.send(item, to, config.MSG_KV_SET)
-	if err != nil {
+	if err == nil {
 		r.c.UpdateRegion(to, hash, 1)
 	}
 	return err
 }
 func (r *RemoteDBProxy) delete(item *proto.DbItem, ts uint64) (err error) {
-	to, hash := r.c.Choose(item.Key, true)
+	to, hash := r.c.Choose(item.Key, false)
 	item.Key = mvccEncode(item.Key, ts)
 	_, err = r.send(item, to, config.MSG_KV_DEL)
 	if err != nil {
@@ -95,7 +99,7 @@ func (r *RemoteDBProxy) delete(item *proto.DbItem, ts uint64) (err error) {
 }
 
 func (r *RemoteDBProxy) find(item *proto.DbItem) (result *proto.DbItems, err error) {
-	to, _ := r.c.Choose(item.Key, true)
+	to, _ := r.c.Choose(item.Key, false)
 	if len(item.Key) > 0 {
 		item.Key = mvccEncode(item.Key, lockVer)
 		item.Value = mvccEncode(item.Value, 0)
@@ -126,6 +130,7 @@ func (r *RemoteDBProxy) send(item *proto.DbItem, to uint64, op uint32) (items *p
 	input := &network.BatchMessage{}
 	input.Term = msg.Term
 	input.Messages = []*network.Message{msg}
+	logger.Infof("发送消息 From:%d To:%d Term:%d\n", msg.From, msg.To, msg.Term)
 	result, err = r.n.Send(input)
 	if len(result.Messages) > 0 {
 		if result.Messages[0].ResultCode != config.MSG_KV_RESULT_SUCCESS {
@@ -145,11 +150,11 @@ func (r *RemoteDBProxy) send(item *proto.DbItem, to uint64, op uint32) (items *p
 
 func (r *RemoteDBProxy) generateId() (uint64, error) {
 
-	node, err := utils.NewNode(0)
-	if err != nil {
-		return 0, err
-	}
-	id := uint64(node.Generate().Int64())
+	//node, err := utils.NewNode(0)
+	//if err != nil {
+	//	return 0, err
+	//}
+	id := atomic.AddUint64(&r.sequence, 1)
 	return id, nil
 }
 

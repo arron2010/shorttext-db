@@ -62,20 +62,20 @@ var (
 // DB represents a collection of key-value pairs that persist on disk.
 // Transactions are used for all forms of data access to the DB.
 type DB struct {
-	mu         sync.RWMutex      // the gatekeeper for all fields
-	file       *os.File          // the underlying file
-	buf        []byte            // a buffer to write to
-	keys       *btree.BTree      // a tree of all item ordered by key
-	exps       *btree.BTree      // a tree of items ordered by expiration
-	idxs       map[string]*index // the index trees.
-	exmgr      bool              // indicates that expires manager is running.
-	flushes    int               // a count of the number of disk flushes
-	closed     bool              // set when the database has been closed
-	config     Config            // the database configuration
-	persist    bool              // do we write to disk
-	shrinking  bool              // when an aof shrink is in-process.
-	lastaofsz  int               // the size of the last shrink aof size
-	EnableSort bool              //启动排序键
+	mu        sync.RWMutex      // the gatekeeper for all fields
+	file      *os.File          // the underlying file
+	buf       []byte            // a buffer to write to
+	keys      *btree.BTree      // a tree of all item ordered by key
+	exps      *btree.BTree      // a tree of items ordered by expiration
+	idxs      map[string]*index // the index trees.
+	exmgr     bool              // indicates that expires manager is running.
+	flushes   int               // a count of the number of disk flushes
+	closed    bool              // set when the database has been closed
+	config    Config            // the database configuration
+	persist   bool              // do we write to disk
+	shrinking bool              // when an aof shrink is in-process.
+	lastaofsz int               // the size of the last shrink aof size
+	id        uint32            //数据库标识
 
 }
 
@@ -958,6 +958,9 @@ func (db *DB) Delete(key Key) (err error) {
 
 const lockVer uint64 = math.MaxUint64
 
+func (db *DB) SetId(id uint32) {
+	db.id = id
+}
 func (db *DB) Find(key Key) *proto.DbItems {
 	result := make([]*proto.DbItem, 0)
 	stop := mvccEncode(key, 0)

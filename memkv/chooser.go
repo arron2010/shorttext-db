@@ -8,15 +8,19 @@ import (
 
 type chooser struct {
 	currentRegions []uint32
-	mapper         *regionMapper
+	mapper         *RegionMapper
+	masterId       uint32
 }
 
 const MAX_REGION_COUNT = 64
 
 func NewChooser() *chooser {
 	c := &chooser{}
-	c.mapper = NewRegionMapper()
+	c.mapper = NewRegionMapper(MAX_RECORD_COUNT)
 	return c
+}
+func (c *chooser) GetMapper() *RegionMapper {
+	return c.mapper
 }
 
 /*
@@ -49,7 +53,7 @@ func (c *chooser) route(regions []uint32, hashCode uint32) uint64 {
 		if r == 0 {
 			r = count
 		}
-		if c.mapper.IsAvailableRegion(r) {
+		if c.mapper.IsAvailableRegion(r) && r != c.masterId {
 			return uint64(r)
 		} else {
 			hashCode = hashCode + 1
@@ -79,6 +83,7 @@ func (c *chooser) UpdateRegion(regionId uint64, hashCode uint32, count int) {
 	var successful bool
 	if count > 0 {
 		successful = c.mapper.Put(hashCode, regionId)
+		logger.Infof("更新区域信息 HashCode[%d] RegionId[%d]\n", hashCode, regionId)
 	}
 	if count < 0 {
 		successful = c.mapper.Del(hashCode)

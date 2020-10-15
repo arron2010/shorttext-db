@@ -13,7 +13,7 @@ const KEY_DEFAULT_VERSION = 1
 //key的版本为0
 const KEY_MIN_VERSION = 2
 
-const MAX_RECORD_COUNT = 10 //1024*1024*512
+const MAX_RECORD_COUNT = 1024 * 1024 * 512
 
 var logger = glogger.MustGetLogger("memkv")
 
@@ -58,11 +58,12 @@ type MemDB interface {
 	Get(key Key) (val *proto.DbItem)
 	Delete(key Key) (err error)
 	//NewIterator(start Key) (iter Iterator)
-	Find(key Key) *proto.DbItems
+	//Find(key Key) *proto.DbItems
 	Scan(startKey Key, endKey Key) *proto.DbItems
 	RecordCount() int
 	LoadDB() error
 	PersistDB() error
+	SetId(id uint32)
 	//Range(start,stop Key)[]*DbItem
 	Close() error
 }
