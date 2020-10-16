@@ -6,7 +6,6 @@ import (
 	"github.com/xp/shorttext-db/easymr/artifacts/message"
 	"github.com/xp/shorttext-db/easymr/artifacts/task"
 	. "github.com/xp/shorttext-db/easymr/collaborator/services"
-	"github.com/xp/shorttext-db/easymr/utils"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"math"
@@ -14,7 +13,7 @@ import (
 	"time"
 )
 
-var blockCache *task.BlockCache
+//var blockCache *task.BlockCache
 
 func NewServiceServerStub(wk iworkable.Workable) *ServiceServerStub {
 	return &ServiceServerStub{wk}
@@ -26,7 +25,7 @@ type ServiceServerStub struct {
 
 //launch Gossip server using gprc
 func LaunchServer(addr string, wkb iworkable.Workable) {
-	blockCache = task.NewBlockCache(utils.GetSettings().CacheServerAddr, utils.GetSettings().CacheServerPassword)
+	//	blockCache = task.NewBlockCache(utils.GetSettings().CacheServerAddr, utils.GetSettings().CacheServerPassword)
 	go func() {
 		lis, err := net.Listen("tcp", addr)
 		if err != nil {
@@ -96,15 +95,15 @@ func (stub *ServiceServerStub) distribute(
 
 	s := *source
 
-	for k, v := range s {
-		if v.RunType > 0 {
-			_, err := blockCache.Get(uint32(v.RunType), k)
-			if err != nil {
-				logger.Errorf("任务（%d）获取二进制数据块失败:%s\n", k, err)
-			}
-			//logger.Infof("服务器开始任务处理，数据块大小:%d\n",len(data))
-		}
-	}
+	//for k, v := range s {
+	//	if v.RunType > 0 {
+	//		_, err := blockCache.Get(uint32(v.RunType), k)
+	//		if err != nil {
+	//			logger.Errorf("任务（%d）获取二进制数据块失败:%s\n", k, err)
+	//		}
+	//		//logger.Infof("服务器开始任务处理，数据块大小:%d\n",len(data))
+	//	}
+	//}
 
 	err = stub.workable.DoneMulti(s)
 	*result = s

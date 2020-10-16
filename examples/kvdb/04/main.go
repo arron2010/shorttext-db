@@ -7,11 +7,11 @@ import (
 )
 
 func main() {
-	config.LoadSettings("/opt/test/config/test_case1.txt")
-	node, err := shardeddb.NewProxyDBNode()
+	config.LoadSettings("/opt/test/config/test_case4.txt", nil)
+	node, err := shardeddb.NewDBNode(true)
 	if err != nil {
 		panic(err)
 	}
-	node.StartProxy()
+	node.Start()
 	utils.WaitFor()
 }

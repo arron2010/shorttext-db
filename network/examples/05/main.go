@@ -44,7 +44,7 @@ func test01() {
 
 }
 func main() {
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 1; i++ {
 		test01()
 		time.Sleep(1 * time.Second)
 	}

@@ -2,7 +2,6 @@ package proxy
 
 import (
 	"context"
-	"github.com/xp/shorttext-db/filedb"
 	"github.com/xp/shorttext-db/glogger"
 	"github.com/xp/shorttext-db/grpcpool"
 	"github.com/xp/shorttext-db/network"
@@ -17,35 +16,69 @@ var logger = glogger.MustGetLogger("proxy")
 
 const (
 	maxGRPCConnections = 100
+	MASTER_NODE_ID     = 1
 )
 
-type GrpcProxyServer struct {
+type NodeProxy struct {
 	peers []string
-	port  string
+
 	node  *network.StreamServer
 	cache *network.AsynCache
 	Id    int
-	seq   *filedb.Sequence
 }
 
-func NewGrpcProxyServer(id int, peers []string, port string) *GrpcProxyServer {
-	server := &GrpcProxyServer{peers: peers, port: port, cache: network.NewMessageCache()}
-	server.Id = id
-
-	return server
-}
-
-func (s *GrpcProxyServer) Start(logLevel string) {
+func NewNodeProxy(peers []string, logLevel string) *NodeProxy {
 	glogger.SetModuleLevel("proxy", logLevel)
 	network.SetLogLevel(logLevel)
-
-	node, err := network.NewStreamServer(s.Id, s, s.peers...)
+	n := &NodeProxy{peers: peers, cache: network.NewMessageCache()}
+	n.Id = MASTER_NODE_ID //节点标识
+	node, err := network.NewStreamServer(n.Id, n, n.peers...)
 	if err != nil {
 		panic(err)
 	}
 	node.Start()
-	s.node = node
+	n.node = node
+	return n
+}
+func (n *NodeProxy) Send(batchMessage *network.BatchMessage) (*network.BatchMessage, error) {
+	logger.Infof("--Proxy server received message term:%d GOROUTINE:%d\n", batchMessage.Term, utils.GetGID())
+	//s.before(batchMessage)
+	count := len(batchMessage.Messages)
+	for i := 0; i < count; i++ {
+		n.node.Send(*batchMessage.Messages[i])
+	}
+	result, err := n.cache.Get(batchMessage.Term, count)
+	if err != nil {
+		logger.Error("Proxy Server Failed:", err)
+	}
+	return result, err
+}
 
+func (n *NodeProxy) Process(ctx context.Context, m network.Message) error {
+	go func() {
+		logger.Infof("++Proxy server begin to process message term:%d GOROUTINE:%d\n", m.Term, utils.GetGID())
+		n.cache.Put(&m)
+	}()
+	return nil
+}
+
+func (n *NodeProxy) ReportUnreachable(id uint64) {
+
+}
+
+type GrpcProxyServer struct {
+	proxy *NodeProxy
+	port  string
+}
+
+func NewGrpcProxyServer(peers []string, port string, logLevel string) *GrpcProxyServer {
+	server := &GrpcProxyServer{}
+	server.proxy = NewNodeProxy(peers, logLevel)
+	server.port = port
+	return server
+}
+
+func (s *GrpcProxyServer) Start() {
 	go func() {
 		lis, err := net.Listen("tcp", s.port)
 		if err != nil {
@@ -53,7 +86,6 @@ func (s *GrpcProxyServer) Start(logLevel string) {
 		}
 		grpcServer := grpc.NewServer(grpc.MaxRecvMsgSize(math.MaxInt32), grpc.MaxSendMsgSize(math.MaxInt32))
 		network.RegisterStreamProxyServer(grpcServer, s)
-
 		if err := grpcServer.Serve(lis); err != nil {
 			panic(err)
 		}
@@ -74,30 +106,7 @@ func (s *GrpcProxyServer) Start(logLevel string) {
 //}
 func (s *GrpcProxyServer) Send(ctx context.Context, batchMessage *network.BatchMessage) (*network.BatchMessage, error) {
 
-	logger.Infof("--Proxy server received message term:%d GOROUTINE:%d\n", batchMessage.Term, utils.GetGID())
-	//s.before(batchMessage)
-	count := len(batchMessage.Messages)
-	for i := 0; i < count; i++ {
-		s.node.Send(*batchMessage.Messages[i])
-	}
-	result, err := s.cache.Get(batchMessage.Term, count)
-	if err != nil {
-		logger.Error("Proxy Server Failed:", err)
-	}
-	return result, err
-}
-
-func (s *GrpcProxyServer) Process(ctx context.Context, m network.Message) error {
-	go func() {
-		logger.Infof("++Proxy server begin to process message term:%d GOROUTINE:%d\n", m.Term, utils.GetGID())
-		s.cache.Put(&m)
-	}()
-
-	return nil
-}
-
-func (s *GrpcProxyServer) ReportUnreachable(id uint64) {
-
+	return s.proxy.Send(batchMessage)
 }
 
 type StreamClient struct {

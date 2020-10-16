@@ -92,7 +92,7 @@ func (r *RemoteDBProxy) delete(item *proto.DbItem, ts uint64) (err error) {
 	to, hash := r.c.Choose(item.Key, false)
 	item.Key = mvccEncode(item.Key, ts)
 	_, err = r.send(item, to, config.MSG_KV_DEL)
-	if err != nil {
+	if err == nil {
 		r.c.UpdateRegion(to, hash, -1)
 	}
 	return err

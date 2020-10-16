@@ -1,14 +1,10 @@
 package task
 
 import (
-	"github.com/go-redis/redis"
 	proto2 "github.com/golang/protobuf/proto"
 	"github.com/xp/shorttext-db/easymr/grpc/proto"
 	"github.com/xp/shorttext-db/glogger"
 	"reflect"
-	"strconv"
-	"sync"
-	"time"
 )
 
 var logger = glogger.MustGetLogger("task")
@@ -250,102 +246,102 @@ func (this *MessageEncoder) toTask(protoItem *proto.Task, mode int) (*Task, erro
 	return taskItem, nil
 }
 
-type BlockCache struct {
-	redisdb    *redis.Client
-	pipeline   redis.Pipeliner
-	LocalCache map[string][]byte
-	L2Cache    bool
-}
+//type BlockCache struct {
+//	redisdb    *redis.Client
+//	pipeline   redis.Pipeliner
+//	LocalCache map[string][]byte
+//	L2Cache    bool
+//}
 
-var once sync.Once
-var blockCache *BlockCache
+//var once sync.Once
+//var blockCache *BlockCache
 
-func NewBlockCache(addr string, password string) *BlockCache {
-	once.Do(func() {
-		redisdb := redis.NewClient(&redis.Options{
-			Addr:               addr,
-			Password:           password,
-			DialTimeout:        60 * time.Second,
-			ReadTimeout:        60 * time.Second,
-			WriteTimeout:       60 * time.Second,
-			PoolSize:           1500,
-			MaxRetries:         5,
-			MinIdleConns:       30,
-			IdleCheckFrequency: 10 * time.Second,
-			IdleTimeout:        60 * time.Second,
-			PoolTimeout:        65 * time.Second,
-		})
-		blockCache = &BlockCache{}
-		blockCache.redisdb = redisdb
-		blockCache.pipeline = redisdb.Pipeline()
-		blockCache.LocalCache = make(map[string][]byte)
-		blockCache.L2Cache = true
-	})
-
-	return blockCache
-}
-func (block *BlockCache) PutLocal(prefix uint32, index int, data []byte) {
-	var strKey string = block.createKey(prefix, index)
-	block.LocalCache[strKey] = data
-
-}
-
-func (block *BlockCache) GetLocal(prefix uint32, index int) []byte {
-	var strKey string = block.createKey(prefix, index)
-	data, ok := block.LocalCache[strKey]
-	if !ok {
-		return []byte{}
-	} else {
-		return data
-	}
-}
-
-func (block *BlockCache) Put(prefix uint32, index int, data []byte, shared bool) error {
-	var err error
-	if shared {
-		var strKey string = block.createKey(prefix, index)
-		err = block.pipeline.Set(strKey, data, 0).Err()
-	}
-	if block.L2Cache && err == nil {
-		block.PutLocal(prefix, index, data)
-	}
-	return err
-}
-func (block *BlockCache) Execute() (int, error) {
-	cmds, err := block.pipeline.Exec()
-	return len(cmds), err
-}
-func (block *BlockCache) Clear() {
-	block.pipeline.FlushAll()
-}
-func (block *BlockCache) KeyCount(prefix uint32) int {
-	strKey := "task_" + strconv.FormatUint(uint64(prefix), 10) + "_*"
-	keys, err := block.redisdb.Keys(strKey).Result()
-	if err != nil {
-		logger.Error("获取任务缓存数据失败：", err)
-	}
-
-	return len(keys)
-}
-func (block *BlockCache) createKey(prefix uint32, index int) string {
-	strKey := "task_" + strconv.FormatUint(uint64(prefix), 10) + "_" + strconv.FormatUint(uint64(index), 10)
-	return strKey
-}
-func (block *BlockCache) Get(prefix uint32, index int) ([]byte, error) {
-	var strKey string = block.createKey(prefix, index)
-	var data []byte
-	var err error
-	if block.L2Cache {
-		data = block.GetLocal(prefix, index)
-		if len(data) == 0 {
-			data, err = block.redisdb.Get(strKey).Bytes()
-		}
-	} else {
-		data, err = block.redisdb.Get(strKey).Bytes()
-	}
-	return data, err
-}
-
-func (block *BlockCache) Close() {
-	block.redisdb.Close()
-}
+//func NewBlockCache(addr string, password string) *BlockCache {
+//	once.Do(func() {
+//		redisdb := redis.NewClient(&redis.Options{
+//			Addr:               addr,
+//			Password:           password,
+//			DialTimeout:        60 * time.Second,
+//			ReadTimeout:        60 * time.Second,
+//			WriteTimeout:       60 * time.Second,
+//			PoolSize:           1500,
+//			MaxRetries:         5,
+//			MinIdleConns:       30,
+//			IdleCheckFrequency: 10 * time.Second,
+//			IdleTimeout:        60 * time.Second,
+//			PoolTimeout:        65 * time.Second,
+//		})
+//		blockCache = &BlockCache{}
+//		blockCache.redisdb = redisdb
+//		blockCache.pipeline = redisdb.Pipeline()
+//		blockCache.LocalCache = make(map[string][]byte)
+//		blockCache.L2Cache = true
+//	})
+//
+//	return blockCache
+//}
+//func (block *BlockCache) PutLocal(prefix uint32, index int, data []byte) {
+//	var strKey string = block.createKey(prefix, index)
+//	block.LocalCache[strKey] = data
+//
+//}
+//
+//func (block *BlockCache) GetLocal(prefix uint32, index int) []byte {
+//	var strKey string = block.createKey(prefix, index)
+//	data, ok := block.LocalCache[strKey]
+//	if !ok {
+//		return []byte{}
+//	} else {
+//		return data
+//	}
+//}
+//
+//func (block *BlockCache) Put(prefix uint32, index int, data []byte, shared bool) error {
+//	var err error
+//	if shared {
+//		var strKey string = block.createKey(prefix, index)
+//		err = block.pipeline.Set(strKey, data, 0).Err()
+//	}
+//	if block.L2Cache && err == nil {
+//		block.PutLocal(prefix, index, data)
+//	}
+//	return err
+//}
+//func (block *BlockCache) Execute() (int, error) {
+//	cmds, err := block.pipeline.Exec()
+//	return len(cmds), err
+//}
+//func (block *BlockCache) Clear() {
+//	block.pipeline.FlushAll()
+//}
+//func (block *BlockCache) KeyCount(prefix uint32) int {
+//	strKey := "task_" + strconv.FormatUint(uint64(prefix), 10) + "_*"
+//	keys, err := block.redisdb.Keys(strKey).Result()
+//	if err != nil {
+//		logger.Error("获取任务缓存数据失败：", err)
+//	}
+//
+//	return len(keys)
+//}
+//func (block *BlockCache) createKey(prefix uint32, index int) string {
+//	strKey := "task_" + strconv.FormatUint(uint64(prefix), 10) + "_" + strconv.FormatUint(uint64(index), 10)
+//	return strKey
+//}
+//func (block *BlockCache) Get(prefix uint32, index int) ([]byte, error) {
+//	var strKey string = block.createKey(prefix, index)
+//	var data []byte
+//	var err error
+//	if block.L2Cache {
+//		data = block.GetLocal(prefix, index)
+//		if len(data) == 0 {
+//			data, err = block.redisdb.Get(strKey).Bytes()
+//		}
+//	} else {
+//		data, err = block.redisdb.Get(strKey).Bytes()
+//	}
+//	return data, err
+//}
+//
+//func (block *BlockCache) Close() {
+//	block.redisdb.Close()
+//}

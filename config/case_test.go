@@ -9,7 +9,7 @@ import (
 
 func TestCreateCaseInfo(t *testing.T) {
 	cards := make([]*Card, 0, 0)
-	for i := 1; i <= 4; i++ {
+	for i := 1; i <= 3; i++ {
 		card := &Card{ID: uint64(i), Name: "test" + strconv.Itoa(i), IP: "127.0.0.1", Port: 2000 + uint32(i), Alive: true}
 		cards = append(cards, card)
 	}

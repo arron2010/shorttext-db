@@ -58,13 +58,15 @@ func (s *DBServer) Process(ctx context.Context, m network.Message) error {
 	}
 	switch m.Type {
 	case config.MSG_KV_SET:
-		s.debugPut(dbItem)
+		s.debugOp("Put", dbItem)
 		err = s.db.Put(dbItem)
 		logger.Infof("数据库[%d]更新数据 消息序号[%d]\n", s.Id, result.Term)
 	case config.MSG_KV_FIND:
+		s.debugOp("Find", dbItem)
 		items := s.db.Scan(dbItem.Key, dbItem.Value)
 		result.Data, err = marshalDbItems(items)
 	case config.MSG_KV_DEL:
+		s.debugOp("Del", dbItem)
 		err = s.db.Delete(dbItem.Key)
 	default:
 		err = errors.New(fmt.Sprintf("数据库[%d]不支持该操作[%d]", s.Id, m.Type))
@@ -77,9 +79,9 @@ func (s *DBServer) Process(ctx context.Context, m network.Message) error {
 func (s *DBServer) ReportUnreachable(id uint64) {
 
 }
-func (s *DBServer) debugPut(dbItem *proto.DbItem) {
+func (s *DBServer) debugOp(op string, dbItem *proto.DbItem) {
 	key, ts, err := mvccDecode(dbItem.Key)
 	if err == nil {
-		logger.Infof("Put DbItem Key[%s] Ts[%d]\n", string(key), ts)
+		logger.Infof("%s DbItem Key[%s] Ts[%d]\n", op, string(key), ts)
 	}
 }

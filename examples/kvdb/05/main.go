@@ -35,8 +35,8 @@ func test02() {
 		fmt.Println(k)
 	}
 	//kv.IniSeq(0)
-	val := kv.Next()
-	fmt.Println(val)
+	//val := kv.Next()
+	//fmt.Println(val)
 	//user1 := &User{}
 	//kv.Get(135,user1)
 	//fmt.Println(user1)

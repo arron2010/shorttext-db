@@ -1,7 +1,6 @@
 package shardeddb
 
 import (
-	"com.neep/goplatform/util"
 	"encoding/binary"
 	"encoding/json"
 	"github.com/xp/shorttext-db/utils"
@@ -38,7 +37,7 @@ func deserialize(text string, source interface{}) (interface{}, error) {
 	}
 	var buff []byte
 	var err error
-	buff = util.StringToBytes(text)
+	buff = utils.StringToBytes(text)
 	switch source.(type) {
 	case int:
 		return int(binary.LittleEndian.Uint32(buff)), nil

@@ -15,8 +15,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tidwall/btree"
 	"github.com/tidwall/gjson"
+	"github.com/xp/shorttext-db/btree"
 
 	"github.com/tidwall/match"
 )

@@ -110,10 +110,10 @@ func (d *DBNode) GetMemStorage(dbName string) IMemStorage {
 }
 
 func (d *DBNode) StartProxy() {
-	c := config.GetCase()
+	//c := config.GetCase()
 	go filedb.StartSequenceService()
-	server := proxy.NewGrpcProxyServer(int(c.MasterCard.ID), d.peers, config.GetConfig().KVServerAddr)
-	server.Start("INFO")
+	server := proxy.NewGrpcProxyServer(d.peers, "5009", config.GetConfig().KVServerAddr)
+	server.Start()
 }
 
 func (d *DBNode) Find(db string, text string) ([]entities.Record, error) {

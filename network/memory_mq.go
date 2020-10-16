@@ -78,7 +78,7 @@ func (a *AsynCache) Get(key uint64, count int) (*BatchMessage, error) {
 			err = errors.New(fmt.Sprintf("消息类型无法转换成*BatchMessage [term:%d]\n", key))
 			break
 		}
-		logger.Infof("消息实际数量:%d 预期数量:%d\n", len(batchMessage.Messages), count)
+		logger.Debugf("消息实际数量:%d 预期数量:%d\n", len(batchMessage.Messages), count)
 		if len(batchMessage.Messages) == count {
 			break
 		}

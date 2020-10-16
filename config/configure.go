@@ -53,6 +53,7 @@ func LoadSettings(cpath string, f func(config *Config)) {
 
 //KV数据库节点代理服务器简称代理服务器
 type Config struct {
+
 	//集群服务器配置文件路径
 	KVCasePath string `json:"KVCasePath"`
 
@@ -83,11 +84,19 @@ type Config struct {
 	//序列服务器地址
 	SequenceServer string `json:"SequenceServer"`
 
-	DictPath        string `json:"DictPath"`
-	HmmPath         string `json:"HmmPath"`
-	UserDictPath    string `json:"UserDictPath"`
-	IdfPath         string `json:"IdfPath"`
-	StopWordsPath   string `json:"StopWordsPath"`
+	//日志级别
+	LogLevel string `json:"LogLevel"`
+
+	DictPath string `json:"DictPath"`
+
+	HmmPath string `json:"HmmPath"`
+
+	UserDictPath string `json:"UserDictPath"`
+
+	IdfPath string `json:"IdfPath"`
+
+	StopWordsPath string `json:"StopWordsPath"`
+
 	WorkerPerMaster int
 }
 

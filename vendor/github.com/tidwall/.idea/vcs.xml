@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="VcsDirectoryMappings">
+    <mapping directory="$PROJECT_DIR$/btree" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/buntdb" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/gjson" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/grect" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/lru" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/match" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/pretty" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/raft" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/raft-buntdb" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/redcon" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/rtree" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/tinyqueue" vcs="Git" />
+  </component>
+</project>

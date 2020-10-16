@@ -15,6 +15,16 @@ type JobInfo struct {
 	LocalJob bool
 }
 
+func NewSimpleJobInfo(handler string, local bool, src interface{}) *JobInfo {
+	jobInfo := &JobInfo{}
+	jobInfo.Handler = handler
+	jobInfo.Params = make(map[string]string)
+	jobInfo.Context = make(map[string][]byte)
+	jobInfo.LocalJob = local
+	jobInfo.Source = src
+	return jobInfo
+}
+
 /*
 配置需要执行的mapreduce的任务
 */

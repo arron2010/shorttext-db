@@ -4,7 +4,7 @@ import (
 	"os"
 	"time"
 
-	bolt "go.etcd.io/bbolt"
+	bolt "github.com/xp/shorttext-db/bbolt"
 )
 
 var database string

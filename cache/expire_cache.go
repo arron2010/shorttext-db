@@ -61,7 +61,7 @@ func (e *ExpireCache) clear() {
 			if v.expire() {
 
 				delete(e.items, k)
-				logger.Infof("清除缓存 key:%d\n", k)
+				//logger.Infof("清除缓存 key:%d\n", k)
 			}
 		}
 		e.mu.Unlock()

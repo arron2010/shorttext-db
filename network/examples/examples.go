@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/xp/shorttext-db/network"
 	"github.com/xp/shorttext-db/network/proxy"
-	"github.com/xp/shorttext-db/util"
 	"github.com/xp/shorttext-db/utils"
 )
 
@@ -20,13 +19,13 @@ func NewDemoProcessor() *DemoProcessor {
 }
 
 func (demo *DemoProcessor) Process(ctx context.Context, m network.Message) error {
-	fmt.Printf("已收到 term:%d content:%s goroutine:%d\n", m.Term, m.Text, util.GetGID())
+	fmt.Printf("已收到 term:%d content:%s goroutine:%d\n", m.Term, m.Text, utils.GetGID())
 	newMsg := network.Message{}
 	newMsg.To = m.From
 	newMsg.From = m.To
 	newMsg.Term = m.Term
 	newMsg.Count = m.Count
-	newMsg.Text = fmt.Sprintf("【%d】已处理", util.GetGID())
+	newMsg.Text = fmt.Sprintf("【%d】已处理", utils.GetGID())
 	demo.streamServer.Send(newMsg)
 	return nil
 }
@@ -50,7 +49,7 @@ func StartStreamServer(id int) {
 
 func StartProxyServer() {
 	var peerUrls = []string{"http://127.0.0.1:8001", "http://127.0.0.1:8002", "http://127.0.0.1:8003", "http://127.0.0.1:8004"}
-	server := proxy.NewGrpcProxyServer(peerUrls, ":5009")
-	server.Start("DEBUG")
+	server := proxy.NewGrpcProxyServer(peerUrls, ":5009", "DEBUG")
+	server.Start()
 	utils.WaitFor()
 }
