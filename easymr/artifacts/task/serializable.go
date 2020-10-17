@@ -33,45 +33,29 @@ func (this *MessageEncoder) ByteToTaskObj(stream []byte) *Task {
 	return nil
 }
 
-func (this *MessageEncoder) Encode(source *map[int]*Task, mode int) (payload *TaskPayload, err error) {
+func (this *MessageEncoder) Encode(source *map[int]*Task, mode int) (buffer []byte, err error) {
 	taskMap := &proto.TaskMap{}
 
 	taskMap.Content = make(map[uint32]*proto.Task)
-	//begin := time.Now()
-	var binaryBlock []byte = []byte{}
+
 	var taskItem *proto.Task
 
 	for key, value := range *source {
-		taskItem, binaryBlock, err = this.toProtoTask(value, mode)
+		taskItem, _, err = this.toProtoTask(value, mode)
 		if err != nil {
 			return nil, err
 		}
 		taskMap.Content[uint32(key)] = taskItem
 
-		//index := value.Context.Context[constants.TASK_INDEX]
-		//nIndex := index.(int)
-		//if nIndex != key{
-		//	logger.Infof("test Encode key1:%d key2:%d",key,nIndex)
-		//}
-
 	}
-	// elapsed := time.Since(begin)
-	//logger.Infof("toProtoTask对象序列化消耗时间:%.2f\n",elapsed.Seconds())
-	// begin = time.Now()
-	buffer, err := proto2.Marshal(taskMap)
+
+	buffer, err = proto2.Marshal(taskMap)
 	if err != nil {
 		logger.Errorf("message encode error,%s\n", err)
 		return nil, err
 	}
 
-	payload = &TaskPayload{
-		Payload:    buffer,
-		BigPayload: binaryBlock,
-	}
-
-	//elapsed = time.Since(begin)
-	// logger.Infof("taskMap对象序列化消耗时间:%.2f\n",elapsed.Seconds())
-	return payload, nil
+	return buffer, nil
 }
 
 func (this *MessageEncoder) Decode(buf []byte, mode int) (*map[int]*Task, error) {
@@ -87,11 +71,6 @@ func (this *MessageEncoder) Decode(buf []byte, mode int) (*map[int]*Task, error)
 		if err != nil {
 			return nil, err
 		}
-		//index := taskItem.Context.Context[constants.TASK_INDEX]
-		//logger.Infof("test Decode key1:%d key2:%d",key,index.(int))
-
-		//taskItem.Context.Context[constants.TASK_INDEX] = taskItem.Index
-		//taskItem.Context.Context[constants.TASK_TERM] = taskItem.Term
 
 		source[int(key)] = taskItem
 	}

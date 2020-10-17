@@ -100,9 +100,10 @@ func (r *RegionMapper) GetAvailableRegion(regionIds []uint32) []uint32 {
 	return current
 }
 
-func (r *RegionMapper) Close() {
-	r.regionDB.Close()
-	r.keyDB.Close()
+func (r *RegionMapper) Close() error {
+	err := r.regionDB.Close()
+	err = r.keyDB.Close()
+	return err
 }
 func encode(data uint32) []byte {
 	buf := make([]byte, 4, 4)

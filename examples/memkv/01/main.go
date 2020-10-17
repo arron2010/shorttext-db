@@ -31,7 +31,7 @@ func main() {
 			batch = memkv.NewBatch()
 			str := strconv.Itoa(i)
 			batch.Put([]byte(str), []byte(str), uint64(i))
-			if i == 9 {
+			if i == 19 {
 				batch.Delete([]byte(str), uint64(i))
 			}
 

@@ -51,6 +51,9 @@ func NewStreamServer(id int, processor Processor, peers ...string) (*StreamServe
 
 	return instance, err
 }
+func (this *StreamServer) IsAlive(nodeId int) bool {
+	return this.transport.IsPeerActive(nodeId)
+}
 
 func (this *StreamServer) GetTransport() *Transport {
 	return this.transport

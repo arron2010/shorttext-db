@@ -1,110 +1,81 @@
 package memkv
 
-import "github.com/xp/shorttext-db/memkv/proto"
+import (
+	"github.com/xp/shorttext-db/easymr/collaborator"
+	"github.com/xp/shorttext-db/memkv/proto"
+	"github.com/xp/shorttext-db/server"
+)
 
 type DBProxy struct {
-	dbs      map[int]MemDB
-	dbCount  int
-	maxCount uint64
+	local  KVClient
+	remote KVClient
 }
 
-func NewDBProxy(dbCount int, maxCount uint64) (KVClient, error) {
+func NewDBProxy() (KVClient, error) {
 	instance := &DBProxy{}
-	instance.dbs = make(map[int]MemDB)
-	var err error
-	var db MemDB
-	instance.dbCount = dbCount
-	instance.maxCount = maxCount
-
-	for i := 1; i <= dbCount; i++ {
-		db, err = Open(":memory:")
-		if err != nil {
-			return nil, err
-		}
-		instance.dbs[i] = db
-	}
-	return instance, err
+	instance.remote = NewRemoteDBProxy(server.GetNodeProxy(), collaborator.GetCollaborator())
+	instance.local = NewLocalDBProxy()
+	return instance, nil
 }
-func (d *DBProxy) put(item *proto.DbItem, ts uint64) (err error) {
-	db := d.dbs[1]
-	item.Key = mvccEncode(item.Key, ts)
-	err = db.Put(item)
+
+func (d *DBProxy) Close() error {
+	err := d.local.Close()
+	err = d.remote.Close()
 	return err
 }
 
-func (d *DBProxy) delete(item *proto.DbItem, ts uint64) (err error) {
-	db := d.dbs[1]
-	item.Key = mvccEncode(item.Key, ts)
-	return db.Delete(item.Key)
-}
-
-func (d *DBProxy) get(key Key) (val *proto.DbItem) {
-	db := d.dbs[1]
-	val = db.Get(key)
-	return val
-}
-
-//func (d *DBProxy)Range(start,stop Key)[]*DbItem{
-//	db := d.dbs[1]
-//	result :=db.Range(start,stop)
-//	return result
-//}
-
-func (d *DBProxy) Close() {
-	db := d.dbs[1]
-	db.Close()
-}
-
 func (d *DBProxy) NewIterator(key Key) Iterator {
-	db := d.dbs[1]
-
-	start := mvccEncode(key, lockVer)
-	stop := mvccEncode(key, 0)
-
-	data := db.Scan(start, stop)
-	iter := NewListIterator(data, false)
+	client := d.choose(key)
+	iter := client.NewIterator(key)
 	return iter
 }
 
-func (d *DBProxy) scan(db MemDB, startKey Key, endKey Key) *proto.DbItems {
-	var start, stop Key
-	if len(startKey) > 0 {
-		start = mvccEncode(startKey, lockVer)
-	}
-	if len(endKey) > 0 {
-		stop = mvccEncode(endKey, lockVer)
-	}
-	data := db.Scan(start, stop)
-	return data
-}
-
 func (d *DBProxy) NewScanIterator(startKey Key, endKey Key) Iterator {
-	db := d.dbs[1]
-	data := d.scan(db, startKey, endKey)
-	iter := NewListIterator(data, false)
+	client := d.choose(startKey)
+	iter := client.NewScanIterator(startKey, endKey)
 	return iter
 }
 
 func (d *DBProxy) NewDescendIterator(startKey Key, endKey Key) Iterator {
-	db := d.dbs[1]
-	data := d.scan(db, startKey, endKey)
-	iter := NewListIterator(data, true)
+	client := d.choose(startKey)
+	iter := client.NewDescendIterator(startKey, endKey)
 	return iter
 }
 
 func (d *DBProxy) Write(batch *Batch) error {
 	var err error
 	for _, added := range batch.addedBuf {
-		err = d.put(added.dbItem, added.ts)
+		err = d.Put(added.dbItem, added.ts)
 		if err != nil {
 			return err
 		}
 	}
 	for _, deleted := range batch.deletedBuf {
-		err = d.delete(deleted.dbItem, deleted.ts)
+		err = d.Delete(deleted.dbItem, deleted.ts)
 		if err != nil {
 			return err
 		}
 	}
 	return err
+}
+
+func (d *DBProxy) Put(item *proto.DbItem, ts uint64) (err error) {
+	client := d.choose(item.Key)
+	err = client.Put(item, ts)
+	return err
+}
+
+func (d *DBProxy) Delete(item *proto.DbItem, ts uint64) (err error) {
+	client := d.choose(item.Key)
+	err = client.Delete(item, ts)
+	return err
+}
+
+func (d *DBProxy) choose(key []byte) KVClient {
+	prefix := string(key[0])
+	if prefix == "m" {
+		return d.local
+	} else {
+		return d.remote
+	}
 }

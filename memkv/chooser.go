@@ -10,6 +10,7 @@ type chooser struct {
 	currentRegions []uint32
 	mapper         *RegionMapper
 	masterId       uint32
+	n              *proxy.NodeProxy
 }
 
 const MAX_REGION_COUNT = 64
@@ -37,8 +38,10 @@ func (c *chooser) Choose(key []byte, added bool) (uint64, uint32) {
 	}
 	//如果选择策略发生错误，就默认访问第2个节点
 	if choosed == 0 {
-		choosed = 2
-		logger.Errorf("key:%v hash code:%d 找不到合适的区域\n", key, hashCode)
+		logger.Errorf("key:%v hash code:%d  added:%v 找不到合适的区域\n", key, hashCode, added)
+		if added {
+			choosed = 2
+		}
 	}
 	return choosed, hashCode
 }
@@ -53,7 +56,11 @@ func (c *chooser) route(regions []uint32, hashCode uint32) uint64 {
 		if r == 0 {
 			r = count
 		}
-		if c.mapper.IsAvailableRegion(r) && r != c.masterId {
+		if r == c.masterId {
+			hashCode = hashCode + 1
+			continue
+		}
+		if c.mapper.IsAvailableRegion(r) && c.n.IsAlive(uint64(r)) {
 			return uint64(r)
 		} else {
 			hashCode = hashCode + 1
@@ -93,6 +100,6 @@ func (c *chooser) UpdateRegion(regionId uint64, hashCode uint32, count int) {
 	}
 }
 
-func (c *chooser) Close() {
-	c.mapper.Close()
+func (c *chooser) Close() error {
+	return c.mapper.Close()
 }

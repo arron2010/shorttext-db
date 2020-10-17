@@ -1,85 +1,78 @@
 package memkv
 
 import (
-	"context"
-	"fmt"
 	"github.com/xp/shorttext-db/config"
-	"github.com/xp/shorttext-db/errors"
 	"github.com/xp/shorttext-db/memkv/proto"
-	"github.com/xp/shorttext-db/network"
+	"github.com/xp/shorttext-db/server"
 )
 
-type DBServer struct {
-	node  *network.StreamServer
-	peers []string
-	Id    int
-	db    MemDB
+type MemDBServer struct {
+	node *server.Node
+
+	Id int
+	db MemDB
 }
 
-func NewDBServer() *DBServer {
+func NewDBServer(node *server.Node) *MemDBServer {
 	var err error
-	server := &DBServer{}
+	server := &MemDBServer{}
 	c := config.GetCase()
 	id := int(c.Local.ID)
-	peers := c.GetUrls()
-	server.node, err = network.NewStreamServer(id, server, peers...)
-	if err != nil {
-		panic(err)
-	}
 	server.db, err = Open(":memory:")
 	if err != nil {
 		panic(err)
 	}
 	server.db.SetId(uint32(id))
 	server.Id = id
-	server.peers = peers
-
+	node.RegisterHandler(server)
+	server.node = node
 	return server
 }
 
-func (s *DBServer) Start() {
-	s.node.Start()
-}
-
-func (s *DBServer) Process(ctx context.Context, m network.Message) error {
+func (s *MemDBServer) Handle(msgType uint32, data []byte) ([]byte, bool, error) {
 	var err error
-	result := network.Message{}
-	result.To = m.From
-	result.From = m.To
-	result.Count = m.Count
-	result.Term = m.Term
-	result.ResultCode = config.MSG_KV_RESULT_SUCCESS
-	result.Index = m.Index
-	dbItem := &proto.DbItem{}
-	logger.Infof("收到消息 From:%d To:%d Term:%d\n", m.From, m.To, m.Term)
-	err = unmarshalDbItem(m.Data, dbItem)
-	if err != nil {
-		return err
-	}
-	switch m.Type {
+	var resp []byte
+
+	switch msgType {
 	case config.MSG_KV_SET:
+		dbItem := &proto.DbItem{}
+		err = unmarshalDbItem(data, dbItem)
+		if err != nil {
+			return nil, true, err
+		}
 		s.debugOp("Put", dbItem)
 		err = s.db.Put(dbItem)
-		logger.Infof("数据库[%d]更新数据 消息序号[%d]\n", s.Id, result.Term)
+		return nil, true, err
+
 	case config.MSG_KV_FIND:
+		dbItem := &proto.DbItem{}
+		err = unmarshalDbItem(data, dbItem)
+		if err != nil {
+			return nil, true, err
+		}
 		s.debugOp("Find", dbItem)
 		items := s.db.Scan(dbItem.Key, dbItem.Value)
-		result.Data, err = marshalDbItems(items)
+		resp, err = marshalDbItems(items)
+		return resp, true, err
+
 	case config.MSG_KV_DEL:
+		dbItem := &proto.DbItem{}
+		err = unmarshalDbItem(data, dbItem)
+		if err != nil {
+			return nil, true, err
+		}
 		s.debugOp("Del", dbItem)
 		err = s.db.Delete(dbItem.Key)
-	default:
-		err = errors.New(fmt.Sprintf("数据库[%d]不支持该操作[%d]", s.Id, m.Type))
+		return nil, true, err
 	}
-	logger.Infof("回复消息 From:%d To:%d Term:%d\n", result.From, result.To, result.Term)
-	s.node.Send(result)
-	return err
+
+	return resp, false, err
 }
 
-func (s *DBServer) ReportUnreachable(id uint64) {
+func (s *MemDBServer) ReportUnreachable(id uint64) {
 
 }
-func (s *DBServer) debugOp(op string, dbItem *proto.DbItem) {
+func (s *MemDBServer) debugOp(op string, dbItem *proto.DbItem) {
 	key, ts, err := mvccDecode(dbItem.Key)
 	if err == nil {
 		logger.Infof("%s DbItem Key[%s] Ts[%d]\n", op, string(key), ts)

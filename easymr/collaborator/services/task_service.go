@@ -5,17 +5,7 @@ import (
 	"github.com/xp/shorttext-db/easymr/store"
 )
 
-func Encode(maps *map[int]*Task, mode int) (payload *TaskPayload, err error) {
-	//var maps_bytes bytes.Buffer
-	//
-	//enc := gob.NewEncoder(&maps_bytes)
-	//
-	//err = enc.Encode(maps)
-	//
-	//payload = &TaskPayload{
-	//	Payload: maps_bytes.Bytes(),
-	//}
-	//return
+func Encode(maps *map[int]*Task, mode int) (payload []byte, err error) {
 
 	payload, err = store.GetInstance().MessageEncoder.Encode(maps, mode)
 
@@ -23,14 +13,9 @@ func Encode(maps *map[int]*Task, mode int) (payload *TaskPayload, err error) {
 
 }
 
-func Decode(payload *TaskPayload, mode int) (maps *map[int]*Task, err error) {
-	//dec := gob.NewDecoder(bytes.NewReader(payload.GetPayload()))
-	//err = dec.Decode(&maps)
-	maps, err = store.GetInstance().MessageEncoder.Decode(payload.GetPayload(), mode)
-	//将二进制流直接赋值给task
-	//for _,v := range *maps{
-	//	v.BinaryContent=payload.BigPayload
-	//}
+func Decode(payload []byte, mode int) (maps *map[int]*Task, err error) {
+
+	maps, err = store.GetInstance().MessageEncoder.Decode(payload, mode)
 
 	return maps, err
 }

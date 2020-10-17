@@ -1,10 +1,8 @@
 package easymr
 
 import (
-	"github.com/xp/shorttext-db/config"
 	"github.com/xp/shorttext-db/easymr/artifacts/iexecutor"
 
-	"github.com/xp/shorttext-db/easymr/artifacts/master"
 	"github.com/xp/shorttext-db/easymr/artifacts/task"
 	"github.com/xp/shorttext-db/easymr/cmd"
 	"github.com/xp/shorttext-db/easymr/collaborator"
@@ -101,23 +99,24 @@ func Set(key string, val ...interface{}) interface{} {
 	return nil
 }
 
-func Run(serverCount int) {
+func Run() {
 
-	runVars := cmd.Vars()
+	//runVars := cmd.Vars()
 
 	// set handler for router
 	router := store.GetRouter()
 
 	router = utils.AdaptRouterToDebugMode(router)
 	// create collaborator
-	clbt := collaborator.NewCollaborator(config.GetConfig().WorkerPerMaster)
-
-	mst := master.NewMaster()
-	mst.BatchAttach(runVars.WorkerPerMaster)
-	mst.LaunchAll()
+	//clbt := collaborator.NewCollaborator(config.GetConfig().WorkerPerMaster)
+	//clbt := collaborator.GetCollaborator()
+	collaborator.GetCollaborator()
+	//mst := master.NewMaster()
+	//mst.BatchAttach(runVars.WorkerPerMaster)
+	//mst.LaunchAll()
 
 	//启动了GRPC服务器
-	clbt.Join(mst)
+	//clbt.Join(clbt.Workable)
 
 	//if cmd.Vars().Principal {
 	//	go func() {

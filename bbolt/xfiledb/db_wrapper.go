@@ -105,6 +105,6 @@ func (w *DBWrapper) GetAllKeyValues() []DBPair {
 	return pairs
 }
 
-func (w *DBWrapper) Close() {
-	w.db.Close()
+func (w *DBWrapper) Close() error {
+	return w.db.Close()
 }

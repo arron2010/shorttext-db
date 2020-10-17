@@ -2,7 +2,9 @@ package memkv
 
 import (
 	"context"
+	"github.com/xp/shorttext-db/easymr/collaborator"
 	"github.com/xp/shorttext-db/network"
+	"github.com/xp/shorttext-db/server"
 	"google.golang.org/grpc"
 	"math"
 	"net"
@@ -15,9 +17,9 @@ type GrpcProxyServer struct {
 }
 
 func NewGrpcProxyServer() *GrpcProxyServer {
-	server := &GrpcProxyServer{}
-	server.proxy = NewRemoteDBProxy()
-	return server
+	s := &GrpcProxyServer{}
+	s.proxy = NewRemoteDBProxy(server.GetNodeProxy(), collaborator.GetCollaborator())
+	return s
 }
 
 func (s *GrpcProxyServer) Start() {

@@ -75,6 +75,9 @@ type KVClient interface {
 	NewScanIterator(startKey Key, endKey Key) Iterator
 	NewDescendIterator(startKey Key, endKey Key) Iterator
 	Write(batch *Batch) error
+	Put(item *proto.DbItem, ts uint64) (err error)
+	Delete(item *proto.DbItem, ts uint64) (err error)
+	Close() error
 }
 
 /*

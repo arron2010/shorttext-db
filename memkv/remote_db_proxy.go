@@ -1,34 +1,29 @@
 package memkv
 
 import (
-	"fmt"
 	"github.com/xp/shorttext-db/config"
 	"github.com/xp/shorttext-db/easymr/artifacts/task"
 	"github.com/xp/shorttext-db/easymr/collaborator"
 	"github.com/xp/shorttext-db/easymr/interfaces"
-	"github.com/xp/shorttext-db/errors"
 	"github.com/xp/shorttext-db/memkv/proto"
-	"github.com/xp/shorttext-db/network"
 	"github.com/xp/shorttext-db/network/proxy"
-	"sync/atomic"
 )
 
 type RemoteDBProxy struct {
-	clbt     *collaborator.Collaborator
-	n        *proxy.NodeProxy
-	c        *chooser
-	sequence uint64
+	clbt *collaborator.Collaborator
+	n    *proxy.NodeProxy
+	c    *chooser
 }
 
-func NewRemoteDBProxy() *RemoteDBProxy {
+func NewRemoteDBProxy(n *proxy.NodeProxy, clbt *collaborator.Collaborator) *RemoteDBProxy {
 	r := &RemoteDBProxy{}
 	c := config.GetCase()
-	n := proxy.NewNodeProxy(c.GetUrls(), config.GetConfig().LogLevel)
 	r.n = n
 	r.c = NewChooser()
 	r.c.masterId = uint32(n.Id)
+	r.clbt = clbt
 	r.c.SetBuckets(c.GetCardList())
-	r.sequence = 0
+	r.c.n = n
 	return r
 }
 func (r *RemoteDBProxy) NewIterator(key Key) Iterator {
@@ -72,7 +67,7 @@ func (r *RemoteDBProxy) NewDescendIterator(startKey Key, endKey Key) Iterator {
 	iter := NewListIterator(data, true)
 	return iter
 }
-func (r *RemoteDBProxy) put(item *proto.DbItem, ts uint64) (err error) {
+func (r *RemoteDBProxy) Put(item *proto.DbItem, ts uint64) (err error) {
 	var to uint64
 	var hash uint32
 	//var force bool = false
@@ -88,7 +83,7 @@ func (r *RemoteDBProxy) put(item *proto.DbItem, ts uint64) (err error) {
 	}
 	return err
 }
-func (r *RemoteDBProxy) delete(item *proto.DbItem, ts uint64) (err error) {
+func (r *RemoteDBProxy) Delete(item *proto.DbItem, ts uint64) (err error) {
 	to, hash := r.c.Choose(item.Key, false)
 	item.Key = mvccEncode(item.Key, ts)
 	_, err = r.send(item, to, config.MSG_KV_DEL)
@@ -104,6 +99,11 @@ func (r *RemoteDBProxy) find(item *proto.DbItem) (result *proto.DbItems, err err
 		item.Key = mvccEncode(item.Key, lockVer)
 		item.Value = mvccEncode(item.Value, 0)
 	}
+	if to == 0 {
+
+		return NewDbItems(), nil
+	}
+
 	result, err = r.send(item, to, config.MSG_KV_FIND)
 	if result == nil {
 		result = NewDbItems()
@@ -112,67 +112,41 @@ func (r *RemoteDBProxy) find(item *proto.DbItem) (result *proto.DbItems, err err
 }
 
 func (r *RemoteDBProxy) send(item *proto.DbItem, to uint64, op uint32) (items *proto.DbItems, err error) {
-
-	var result *network.BatchMessage
-	var term uint64
-	term, err = r.generateId()
-	var msg *network.Message
-	msg = &network.Message{}
-	msg.Term = term
-	msg.Count = 1
-	msg.Type = op
-	msg.Data, err = marshalDbItem(item)
+	var req, resp []byte
+	req, err = marshalDbItem(item)
 	if err != nil {
 		return nil, err
 	}
-	msg.From = uint64(r.n.Id)
-	msg.To = to
-	input := &network.BatchMessage{}
-	input.Term = msg.Term
-	input.Messages = []*network.Message{msg}
-	logger.Infof("发送消息 From:%d To:%d Term:%d\n", msg.From, msg.To, msg.Term)
-	result, err = r.n.Send(input)
-	if len(result.Messages) > 0 {
-		if result.Messages[0].ResultCode != config.MSG_KV_RESULT_SUCCESS {
-			return nil, errors.New(fmt.Sprintf("数据库服务器返回错误:%s op:%d", result.Messages[0].Text, op))
-		} else {
-			if op == config.MSG_KV_FIND {
-				items = NewDbItems()
-				err = unmarshalDbItems(result.Messages[0].Data, items)
-				return items, err
-			}
-		}
+
+	resp, err = r.n.SendSingleMsg(to, op, req)
+	if op == config.MSG_KV_FIND {
+		items = NewDbItems()
+		err = unmarshalDbItems(resp, items)
+		return items, err
 	} else {
-		return nil, errors.New(fmt.Sprintf("远程操作数据库失败 op:%d", op))
+		return nil, err
 	}
-	return nil, err
-}
-
-func (r *RemoteDBProxy) generateId() (uint64, error) {
-
-	//node, err := utils.NewNode(0)
-	//if err != nil {
-	//	return 0, err
-	//}
-	id := atomic.AddUint64(&r.sequence, 1)
-	return id, nil
 }
 
 func (r *RemoteDBProxy) Write(batch *Batch) error {
 	var err error
 	for _, added := range batch.addedBuf {
-		err = r.put(added.dbItem, added.ts)
+		err = r.Put(added.dbItem, added.ts)
 		if err != nil {
 			return err
 		}
 	}
 	for _, deleted := range batch.deletedBuf {
-		err = r.delete(deleted.dbItem, deleted.ts)
+		err = r.Delete(deleted.dbItem, deleted.ts)
 		if err != nil {
 			return err
 		}
 	}
 	return err
+}
+
+func (r *RemoteDBProxy) Close() error {
+	return r.c.Close()
 }
 
 func (r *RemoteDBProxy) scan(startKey Key, endKey Key) *proto.DbItems {

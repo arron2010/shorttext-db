@@ -66,21 +66,21 @@ func (stub *ServiceServerStub) Distribute(
 	ctx context.Context,
 	in *task.TaskPayload) (out *task.TaskPayload, err error) {
 
-	var (
-		src *map[int]*task.Task
-		rst *map[int]*task.Task
-	)
-	//	fs := store.GetInstance()
-	//	fs.TypeRegister.RegisterTypes()
-
-	src, err = Decode(in, task.SOURCE_SERIALIZE)
-
-	//for _, v := range *src {
-	//	v.BinaryContent = in.BigPayload
-	//}
-
-	rst, err = stub.distribute(src)
-	out, err = Encode(rst, task.RESULT_SERIALIZE)
+	//var (
+	//	src *map[int]*task.Task
+	//	rst *map[int]*task.Task
+	//)
+	////	fs := store.GetInstance()
+	////	fs.TypeRegister.RegisterTypes()
+	//
+	//src, err = Decode(in, task.SOURCE_SERIALIZE)
+	//
+	////for _, v := range *src {
+	////	v.BinaryContent = in.BigPayload
+	////}
+	//
+	//rst, err = stub.distribute(src)
+	//out, err = Encode(rst, task.RESULT_SERIALIZE)
 
 	return out, err
 }

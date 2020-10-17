@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gorilla/mux"
+	"github.com/xp/shorttext-db/config"
 	"github.com/xp/shorttext-db/easymr/artifacts/iexecutor"
 	"github.com/xp/shorttext-db/easymr/artifacts/iworkable"
 	"github.com/xp/shorttext-db/easymr/artifacts/master"
@@ -14,6 +15,7 @@ import (
 	"github.com/xp/shorttext-db/easymr/interfaces"
 	"github.com/xp/shorttext-db/easymr/store"
 	"github.com/xp/shorttext-db/glogger"
+	"github.com/xp/shorttext-db/network/proxy"
 	"sync"
 	"time"
 )
@@ -30,21 +32,38 @@ var singleton *Collaborator
 var logger = glogger.MustGetLogger("collaborator")
 var firstStarted = false
 
+type LocalHandler func(sources map[int]*task.Task) (map[int]*task.Task, error)
+
 /*
 mapreduce服务启动者，启动GRPC服务以及HTTP服务
 GRPC服务负责节点之间通讯，HTTP服务用来发布对外调用
 */
 type Collaborator struct {
-	Workable iworkable.Workable
+	Workable   iworkable.Workable
+	masterNode *ClbtMasterNode
+	slaveNode  *ClbtSlaveNode
 }
 
+func GetCollaborator() *Collaborator {
+	once.Do(func() {
+		singleton = NewCollaborator(config.GetConfig().WorkerPerMaster)
+
+	})
+	return singleton
+}
 func NewCollaborator(amount int) *Collaborator {
 
 	mst := master.NewMaster()
 	mst.BatchAttach(amount)
 	mst.LaunchAll()
-	clbt := &Collaborator{Workable: mst}
 
+	clbt := &Collaborator{Workable: mst}
+	if config.GetCase().Local.ID == proxy.MASTER_NODE_ID {
+		clbt.masterNode = newClbtMasterNode()
+	} else {
+		clbt.slaveNode = newClbtSlaveNode(clbt.Workable)
+
+	}
 	return clbt
 }
 
@@ -53,7 +72,6 @@ func (clbt *Collaborator) Join(wk iworkable.Workable) {
 }
 
 func (clbt *Collaborator) Clean() {
-
 	//cardHelper.RangePrint(cards)
 }
 
@@ -68,9 +86,11 @@ func (clbt *Collaborator) DistributeSeq(sources map[int]*task.Task, localTask bo
 		return clbt.remoteDistributeSeq(sources)
 	}
 }
+
 func (clbt *Collaborator) remoteDistributeSeq(sources map[int]*task.Task) (map[int]*task.Task, error) {
-	return nil, nil
+	return clbt.masterNode.broadcast(sources, clbt.localDistributeSeq)
 }
+
 func (clbt *Collaborator) localDistributeSeq(sources map[int]*task.Task) (map[int]*task.Task, error) {
 
 	var (
@@ -81,7 +101,6 @@ func (clbt *Collaborator) localDistributeSeq(sources map[int]*task.Task) (map[in
 
 	chs := make(map[int]chan *task.Task)
 	for k, v := range sources {
-
 		//如果任务为本地执行，将不分发到其他服务器
 		p := *v
 		chs[k] = clbt.DelayExecute(&p)
@@ -101,7 +120,6 @@ func (clbt *Collaborator) localDistributeSeq(sources map[int]*task.Task) (map[in
 		}
 	}
 	logger.Infof("完成任务处理 任务总数量:%d 完成任务数量:%d\n", handled, counter)
-
 	return result, nil
 }
 
