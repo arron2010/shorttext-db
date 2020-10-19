@@ -1,9 +1,10 @@
 package memkv
 
 import (
-	"bytes"
 	"fmt"
 	"github.com/tidwall/gjson"
+	"github.com/xp/shorttext-db/memkv/proto"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -243,30 +244,16 @@ func TestDB_Indexes05(t *testing.T) {
 }
 
 func TestDB_Indexes03(t *testing.T) {
-	a := []byte{1, 2, 3}
-	b := []byte{1, 3}
-	fmt.Println(bytes.Compare(a, b))
-	//db, _ := Open(":memory:")
-	//db.CreateIndex("last_name", "*", IndexJSON("name.last"))
-	//db.CreateIndex("age", "*", IndexJSON("age"))
-	//db.Update(func(tx *Tx) error {
-	//	tx.Set("1", `{"name":{"first":"Tom","last":"Johnson"},"age":38}`, nil)
-	//	tx.Set("2", `{"name":{"first":"Janet","last":"Johnson"},"age":47}`, nil)
-	//	tx.Set("3", `{"name":{"first":"Carol","last":"Anderson"},"age":52}`, nil)
-	//	tx.Set("4", `{"name":{"first":"Alan","last":"Cooper"},"age":28}`, nil)
-	//	return nil
-	//})
-	//db.View(func(tx *Tx) error {
-	//	fmt.Println("Order by last name")
-	//	tx.AscendEqual("last_name", `{"name":{"first":"Tom","last":"Johnson"},"age":38}`, func(key, value string) bool {
-	//		fmt.Printf("%s: %s\n", key, value)
-	//		return true
-	//	})
-	//
-	//	//tx.Ascend("last_name", func(key, value string) bool {
-	//	//	fmt.Printf("%s: %s\n", key, value)
-	//	//	return true
-	//	//})
-	//	return nil
-	//})
+	db, err := Open(":memory:")
+	if err != nil {
+		panic(err)
+	}
+	for i := 1; i <= 9; i++ {
+		str := []byte(strconv.Itoa(i))
+		db.Put(&proto.DbItem{Key: str, Value: str})
+	}
+	start := []byte("1")
+	stop := []byte("9")
+	result := db.Scan(start, stop)
+	fmt.Println(len(result.Items))
 }

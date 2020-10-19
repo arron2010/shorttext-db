@@ -7,6 +7,7 @@ import (
 	"github.com/xp/shorttext-db/easymr/interfaces"
 	"github.com/xp/shorttext-db/memkv/proto"
 	"github.com/xp/shorttext-db/network/proxy"
+	"sync"
 )
 
 type RemoteDBProxy struct {
@@ -14,6 +15,8 @@ type RemoteDBProxy struct {
 	n    *proxy.NodeProxy
 	c    *chooser
 }
+
+var once sync.Once
 
 func NewRemoteDBProxy(n *proxy.NodeProxy, clbt *collaborator.Collaborator) *RemoteDBProxy {
 	r := &RemoteDBProxy{}
@@ -24,8 +27,11 @@ func NewRemoteDBProxy(n *proxy.NodeProxy, clbt *collaborator.Collaborator) *Remo
 	r.clbt = clbt
 	r.c.SetBuckets(c.GetCardList())
 	r.c.n = n
+	initializeMRConfig(nil)
+
 	return r
 }
+
 func (r *RemoteDBProxy) NewIterator(key Key) Iterator {
 	//var start, stop Key
 	//if len(key) > 0{
@@ -50,7 +56,7 @@ func (r *RemoteDBProxy) NewScanIterator(startKey Key, endKey Key) Iterator {
 	if len(endKey) > 0 {
 		stop = mvccEncode(endKey, lockVer)
 	}
-	data := r.scan(start, stop)
+	data := r.Scan(start, stop)
 	iter := NewListIterator(data, false)
 	return iter
 }
@@ -63,7 +69,7 @@ func (r *RemoteDBProxy) NewDescendIterator(startKey Key, endKey Key) Iterator {
 	if len(endKey) > 0 {
 		stop = mvccEncode(endKey, lockVer)
 	}
-	data := r.scan(start, stop)
+	data := r.Scan(start, stop)
 	iter := NewListIterator(data, true)
 	return iter
 }
@@ -149,8 +155,8 @@ func (r *RemoteDBProxy) Close() error {
 	return r.c.Close()
 }
 
-func (r *RemoteDBProxy) scan(startKey Key, endKey Key) *proto.DbItems {
-	jobInfo := interfaces.NewSimpleJobInfo("ScanDBHandler", false,
+func (r *RemoteDBProxy) Scan(startKey Key, endKey Key) *proto.DbItems {
+	jobInfo := interfaces.NewSimpleJobInfo("MemKVJob", false,
 		&proto.DbQueryParam{StartKey: startKey, EndKey: endKey})
 	context := &task.TaskContext{}
 	context.Context = make(map[string]interface{})

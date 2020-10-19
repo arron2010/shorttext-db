@@ -26,6 +26,7 @@ func NewDBServer(node *server.Node) *MemDBServer {
 	server.Id = id
 	node.RegisterHandler(server)
 	server.node = node
+	initializeMRConfig(server.db)
 	return server
 }
 

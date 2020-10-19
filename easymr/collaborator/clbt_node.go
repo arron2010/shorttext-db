@@ -37,9 +37,11 @@ func (n *ClbtMasterNode) broadcast(todoTasks map[int]*task.Task, localhandler Lo
 
 	batchData = make([][]byte, 0, len(todoTasks))
 	for i, t := range todoTasks {
-		to := uint64(i % len(n.currentNodes))
+		toIndex := i % len(n.currentNodes)
 		taskPair := make(map[int]*task.Task)
 		taskPair[i] = t
+		to := n.currentNodes[toIndex]
+		logger.Infof("广播到节点[%d]处理\n", to)
 		if !n.master.IsAlive(to) {
 			resultTask, err = localhandler(taskPair)
 			all = n.mergeTask(resultTask, all)

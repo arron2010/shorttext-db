@@ -1,6 +1,7 @@
 syntax = "proto3";
 import  "collection_message.proto";
 import  "taskcontext_message.proto";
+import  "object_message.proto";
 
 package proto;
 
@@ -15,8 +16,7 @@ message Task{
     TaskContext context =6;
     uint32 stage      =7;
     uint32 RunType =8;
-    uint32 TimeOut = 9;
-    uint64 Term =10;
-    uint64 Index =11;
+    ObjectItem Object = 9;
+
 }
 

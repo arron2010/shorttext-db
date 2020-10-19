@@ -161,6 +161,9 @@ func (clbt *Collaborator) SharedDistribute(pmaps *map[int]*task.Task, stacks []s
 				return nil, err
 			}
 			maps, err = clbt.DistributeSeq(maps, localTask)
+			if err != nil {
+				return nil, err
+			}
 		case constants.EXECUTOR_TYPE_REDUCER:
 			maps, result, err = exe.Execute(maps)
 			if err != nil {

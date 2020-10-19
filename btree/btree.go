@@ -532,7 +532,10 @@ func (n *node) iterate(dir direction, start, stop Item, includeStart bool, hit b
 				continue
 			}
 			hit = true
-			if stop != nil && !n.items[i].Less(stop, ctx) {
+			//
+			//stop.Less(n.items[i], ctx) 表示n.item[i] <= stop
+			//!n.items[i].Less(stop, ctx) 表示n.item[i] < stop
+			if stop != nil && stop.Less(n.items[i], ctx) {
 				return hit, false
 			}
 			if !iter(n.items[i]) {

@@ -53,7 +53,7 @@ func (n *Node) Process(ctx context.Context, m network.Message) error {
 	var err error
 	var data []byte
 	var used bool
-	logger.Infof("收到消息 From:%d To:%d Term:%d\n", m.From, m.To, m.Term)
+	//logger.Infof("收到消息 From:%d To:%d Term:%d\n", m.From, m.To, m.Term)
 	for _, h := range n.handlers {
 
 		data, used, err = h.Handle(m.Type, m.Data)
@@ -73,7 +73,7 @@ func (n *Node) Process(ctx context.Context, m network.Message) error {
 		}
 		result.Data = data
 		n.channel.Send(result)
-		logger.Infof("回复消息 From:%d To:%d Term:%d\n", result.From, result.To, result.Term)
+		logger.Infof("回复消息 From:%d To:%d Term:%d Type:%d\n", result.From, result.To, result.Term, m.Type)
 	}
 
 	return err

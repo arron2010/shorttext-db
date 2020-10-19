@@ -133,6 +133,9 @@ func ByteToFloat32(bytes []byte) float32 {
 }
 
 func IsNil(i interface{}) bool {
+	if i == nil {
+		return true
+	}
 	v := reflect.ValueOf(i)
 	switch v.Kind() {
 	case reflect.Interface, reflect.Map, reflect.Ptr, reflect.Slice:

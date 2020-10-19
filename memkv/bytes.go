@@ -193,6 +193,9 @@ func mvccEncode(key []byte, ver uint64) []byte {
 	ret := EncodeUintDesc(b, ver)
 	return ret
 }
+func MvccEncode(key []byte, ver uint64) []byte {
+	return mvccEncode(key, ver)
+}
 
 // mvccDecode parses the origin key and version of an encoded key, if the encoded key is a meta key,
 // just returns the origin key.
@@ -217,4 +220,7 @@ func mvccDecode(encodedKey []byte) ([]byte, uint64, error) {
 		return nil, 0, ErrInvalidEncodedKey
 	}
 	return key, ver, nil
+}
+func MvccDecode(encodedKey []byte) ([]byte, uint64, error) {
+	return mvccDecode(encodedKey)
 }

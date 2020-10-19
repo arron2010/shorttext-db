@@ -79,6 +79,10 @@ func (this *MessageEncoder) Decode(buf []byte, mode int) (*map[int]*Task, error)
 
 func (this *MessageEncoder) collectionToByteStream(collection *Collection) ([]*proto.ObjectItem, error) {
 
+	if collection.Length() == 0 {
+		return nil, nil
+	}
+
 	var bufferItem []*proto.ObjectItem
 	bufferItem = make([]*proto.ObjectItem, collection.Length())
 	bufferItem = bufferItem[:0]
@@ -164,11 +168,35 @@ func (this *MessageEncoder) toProtoTask(taskItem *Task, mode int) (*proto.Task, 
 	protoTask.Context = context
 	protoTask.Stage = uint32(taskItem.Stage)
 	protoTask.RunType = uint32(taskItem.RunType)
-	protoTask.TimeOut = uint32(taskItem.TimeOut)
-	protoTask.Term = uint64(taskItem.Context.Term)
-	protoTask.Index = uint64(taskItem.Context.Index)
+	protoTask.Object = this.sourceToObjectItem(taskItem.Object)
 
 	return protoTask, nil, nil
+}
+func (this *MessageEncoder) sourceToObjectItem(source interface{}) *proto.ObjectItem {
+	if source == nil {
+		return nil
+	}
+	buffer, err := this.Serializer.Serialize(source)
+	if err != nil {
+		logger.Error("Task.Object序列化失败:", err)
+		return nil
+	}
+	obj := &proto.ObjectItem{}
+	obj.Type = reflect.TypeOf(source).String()
+	obj.Content = buffer
+	return obj
+}
+
+func (this *MessageEncoder) objectItemToSource(obj *proto.ObjectItem) interface{} {
+	if obj == nil {
+		return nil
+	}
+	source, err := this.Serializer.Deserialize(obj.Type, obj.Content)
+	if err != nil {
+		logger.Error("Task.Object反序列化失败:", err)
+		return nil
+	}
+	return source
 }
 
 func (this *MessageEncoder) toTask(protoItem *proto.Task, mode int) (*Task, error) {
@@ -219,9 +247,7 @@ func (this *MessageEncoder) toTask(protoItem *proto.Task, mode int) (*Task, erro
 	taskItem.Result = *result
 	taskItem.Context = context
 	taskItem.RunType = int(protoItem.RunType)
-	taskItem.TimeOut = int(protoItem.TimeOut)
-	taskItem.Context.Term = int(protoItem.Term)
-	taskItem.Context.Index = int(protoItem.Index)
+	taskItem.Object = this.objectItemToSource(protoItem.Object)
 	return taskItem, nil
 }
 

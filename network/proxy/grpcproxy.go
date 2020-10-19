@@ -71,13 +71,14 @@ func (n *NodeProxy) SenMultiMsg(toList []uint64, op uint32, batchData [][]byte) 
 	l := len(toList)
 	req = &network.BatchMessage{}
 	req.Messages = make([]*network.Message, 0, l)
-
+	var term uint64
+	term = n.generateId()
 	for i := 0; i < l; i++ {
-		msg = n.createMsg(toList[i], op, batchData[i])
+		msg = n.createMsg(toList[i], op, term, batchData[i])
 		msg.Count = uint32(l)
-		req.Term = msg.Term
+		req.Term = term
 		req.Messages = append(req.Messages, msg)
-		logger.Infof("发送消息 From:%d To:%d Term:%d\n", msg.From, msg.To, msg.Term)
+		logger.Infof("批量发送消息 From:%d To:%d Term:%d\n", msg.From, msg.To, msg.Term)
 	}
 	resp, err = n.Send(req)
 	if err != nil {
@@ -91,14 +92,15 @@ func (n *NodeProxy) SendSingleMsg(to uint64, op uint32, data []byte) ([]byte, er
 	var msg *network.Message
 	var err error
 	var result *network.BatchMessage
-
-	msg = n.createMsg(to, op, data)
+	var term uint64
+	term = n.generateId()
+	msg = n.createMsg(to, op, term, data)
 
 	req := &network.BatchMessage{}
 	req.Term = msg.Term
 	req.Messages = []*network.Message{msg}
 
-	logger.Infof("发送消息 From:%d To:%d Term:%d\n", msg.From, msg.To, msg.Term)
+	logger.Infof("单个发送消息 From:%d To:%d Term:%d\n", msg.From, msg.To, msg.Term)
 	result, err = n.Send(req)
 	if err != nil {
 		return nil, err
@@ -135,10 +137,9 @@ func (n *NodeProxy) generateId() uint64 {
 	return id
 }
 
-func (n *NodeProxy) createMsg(to uint64, op uint32, data []byte) *network.Message {
+func (n *NodeProxy) createMsg(to uint64, op uint32, term uint64, data []byte) *network.Message {
 	var msg *network.Message
-	var term uint64
-	term = n.generateId()
+
 	msg = &network.Message{}
 	msg.Term = term
 	msg.Count = 1

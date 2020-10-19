@@ -10,7 +10,9 @@ import (
 func TestCreateCaseInfo(t *testing.T) {
 	cards := make([]*Card, 0, 0)
 	for i := 1; i <= 3; i++ {
+		strPort := ":808" + strconv.Itoa(i)
 		card := &Card{ID: uint64(i), Name: "test" + strconv.Itoa(i), IP: "127.0.0.1", Port: 2000 + uint32(i), Alive: true}
+		card.HttpPort = strPort
 		cards = append(cards, card)
 	}
 
@@ -39,6 +41,7 @@ func TestCreateCaseInfo(t *testing.T) {
 	configObj.UserDictPath = "/opt/gopath/bin/dict/user.dict.utf8"
 	configObj.IdfPath = "/opt/gopath/bin/dict/idf.utf8"
 	configObj.StopWordsPath = "/opt/gopath/bin/dict/stop_words.utf8"
+	configObj.WorkerPerMaster = 2
 
 	buff, _ := json.Marshal(configObj)
 	utils.WriteFile(configPath, string(buff))

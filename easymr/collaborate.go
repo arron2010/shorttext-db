@@ -1,6 +1,7 @@
 package easymr
 
 import (
+	"github.com/xp/shorttext-db/config"
 	"github.com/xp/shorttext-db/easymr/artifacts/iexecutor"
 
 	"github.com/xp/shorttext-db/easymr/artifacts/task"
@@ -124,9 +125,9 @@ func Run() {
 	//		grpcServer.Start()
 	//	}()
 	//}
-
+	httpPort := config.GetCase().Local.HttpPort
 	serv := &http.Server{
-		Addr:        ":8082",
+		Addr:        httpPort,
 		Handler:     router,
 		ReadTimeout: constants.DEFAULT_READ_TIMEOUT,
 	}

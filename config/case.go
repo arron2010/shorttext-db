@@ -8,6 +8,8 @@ type Card struct {
 	IP    string
 	Port  uint32
 	Alive bool
+	//用于性能分析http端口(Profiling)
+	HttpPort string
 }
 
 type Case struct {
