@@ -1,9 +1,13 @@
 package memkv
 
-import "github.com/xp/shorttext-db/memkv/proto"
+import (
+	"github.com/xp/shorttext-db/memkv/proto"
+)
 
 type LocalDBProxy struct {
-	db MemDB
+	db        MemDB
+	sequence  uint64
+	readCount uint64
 }
 
 func NewLocalDBProxy() *LocalDBProxy {
@@ -18,7 +22,13 @@ func NewLocalDBProxy() *LocalDBProxy {
 	return l
 }
 
-func (l *LocalDBProxy) NewIterator(key Key) Iterator {
+func (l *LocalDBProxy) NewIterator(key []byte) Iterator {
+	l.readCount = l.readCount + 1
+	//if l.readCount >400000{
+	//
+	//	fmt.Println("LocalDBProxy NewIterator---->",	l.readCount," ",string(key) )
+	//}
+
 	db := l.db
 
 	start := mvccEncode(key, lockVer)
@@ -27,15 +37,22 @@ func (l *LocalDBProxy) NewIterator(key Key) Iterator {
 	iter := NewListIterator(data, false)
 	return iter
 }
+func (l *LocalDBProxy) GetValues(key []byte) *proto.DbItems {
+	db := l.db
+	start := mvccEncode(key, lockVer)
+	stop := mvccEncode(key, 0)
+	data := db.Scan(start, stop)
+	return data
+}
 
-func (l *LocalDBProxy) NewScanIterator(startKey Key, endKey Key) Iterator {
+func (l *LocalDBProxy) NewScanIterator(startKey []byte, endKey []byte, locked bool, desc bool) Iterator {
 	db := l.db
 	data := l.scan(db, startKey, endKey)
 	iter := NewListIterator(data, false)
 	return iter
 }
 
-func (l *LocalDBProxy) NewDescendIterator(startKey Key, endKey Key) Iterator {
+func (l *LocalDBProxy) NewDescendIterator(startKey []byte, endKey []byte) Iterator {
 	db := l.db
 	data := l.scan(db, startKey, endKey)
 	iter := NewListIterator(data, true)
@@ -50,16 +67,28 @@ func (l *LocalDBProxy) Close() error {
 	return l.db.Close()
 }
 
-func (l *LocalDBProxy) Put(item *proto.DbItem, ts uint64) (err error) {
+func (l *LocalDBProxy) Put(key []byte, val []byte, ts uint64, locked bool) (err error) {
 	db := l.db
+	item := &proto.DbItem{Key: key, Value: val}
 	item.Key = mvccEncode(item.Key, ts)
 	err = db.Put(item)
+	//x :=l.generateId()
+	//if l.sequence >=2000{
+	//	fmt.Println("LocalDBProxy Put------------>",x)
+	//}
 	return err
 }
-func (l *LocalDBProxy) Delete(item *proto.DbItem, ts uint64) (err error) {
+func (l *LocalDBProxy) Get(key []byte, ts uint64) (val []byte, validated bool) {
+	k := mvccEncode(key, ts)
+	v := l.db.Get(k).Value
+	return v, len(v) != 0
+}
+
+func (l *LocalDBProxy) Delete(key []byte, ts uint64, locked bool) (err error) {
+
 	db := l.db
-	item.Key = mvccEncode(item.Key, ts)
-	return db.Delete(item.Key)
+	k := mvccEncode(key, ts)
+	return db.Delete(k)
 }
 
 func (l *LocalDBProxy) scan(db MemDB, startKey Key, endKey Key) *proto.DbItems {
@@ -68,8 +97,17 @@ func (l *LocalDBProxy) scan(db MemDB, startKey Key, endKey Key) *proto.DbItems {
 		start = mvccEncode(startKey, lockVer)
 	}
 	if len(endKey) > 0 {
-		stop = mvccEncode(endKey, lockVer)
+		stop = mvccEncode(endKey, 0)
 	}
 	data := db.Scan(start, stop)
+	//k := mvccEncode(startKey,10)
+	//obj :=l.db.Get(k)
+	//fmt.Println(obj)
 	return data
+}
+
+func (l *LocalDBProxy) generateId() uint64 {
+	//id := atomic.AddUint64(&l.sequence, 1)
+	l.sequence = l.sequence + 1
+	return l.sequence
 }

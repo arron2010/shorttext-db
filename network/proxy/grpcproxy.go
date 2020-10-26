@@ -47,7 +47,7 @@ func NewNodeProxy(peers []string, logLevel string) *NodeProxy {
 	return n
 }
 func (n *NodeProxy) Send(batchMessage *network.BatchMessage) (*network.BatchMessage, error) {
-	logger.Infof("--Proxy server received message term:%d GOROUTINE:%d\n", batchMessage.Term, utils.GetGID())
+	logger.Debugf("--Proxy server received message term:%d GOROUTINE:%d\n", batchMessage.Term, utils.GetGID())
 	//s.before(batchMessage)
 	count := len(batchMessage.Messages)
 	for i := 0; i < count; i++ {
@@ -100,14 +100,14 @@ func (n *NodeProxy) SendSingleMsg(to uint64, op uint32, data []byte) ([]byte, er
 	req.Term = msg.Term
 	req.Messages = []*network.Message{msg}
 
-	logger.Infof("单个发送消息 From:%d To:%d Term:%d\n", msg.From, msg.To, msg.Term)
+	logger.Debugf("单个发送消息 From:%d To:%d Term:%d\n", msg.From, msg.To, msg.Term)
 	result, err = n.Send(req)
 	if err != nil {
 		return nil, err
 	}
 	if len(result.Messages) > 0 {
 		resp := result.Messages[0]
-		logger.Infof("返回消息 From:%d To:%d Term:%d\n", resp.From, resp.To, resp.Term)
+		logger.Debugf("返回消息 From:%d To:%d Term:%d\n", resp.From, resp.To, resp.Term)
 
 		if resp.ResultCode != config.MSG_KV_RESULT_SUCCESS {
 			return nil, errors.New(fmt.Sprintf("远程服务器返回错误:%s op:%d", resp.Text, op))
@@ -122,7 +122,7 @@ func (n *NodeProxy) SendSingleMsg(to uint64, op uint32, data []byte) ([]byte, er
 }
 func (n *NodeProxy) Process(ctx context.Context, m network.Message) error {
 	go func() {
-		logger.Infof("++Proxy server begin to process message term:%d GOROUTINE:%d\n", m.Term, utils.GetGID())
+		logger.Debugf("++Proxy server begin to process message term:%d GOROUTINE:%d\n", m.Term, utils.GetGID())
 		n.cache.Put(&m)
 	}()
 	return nil

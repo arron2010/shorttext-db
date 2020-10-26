@@ -73,7 +73,7 @@ func (n *Node) Process(ctx context.Context, m network.Message) error {
 		}
 		result.Data = data
 		n.channel.Send(result)
-		logger.Infof("回复消息 From:%d To:%d Term:%d Type:%d\n", result.From, result.To, result.Term, m.Type)
+		logger.Debugf("回复消息 From:%d To:%d Term:%d Type:%d\n", result.From, result.To, result.Term, m.Type)
 	}
 
 	return err

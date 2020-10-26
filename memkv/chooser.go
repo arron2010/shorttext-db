@@ -90,7 +90,7 @@ func (c *chooser) UpdateRegion(regionId uint64, hashCode uint32, count int) {
 	var successful bool
 	if count > 0 {
 		successful = c.mapper.Put(hashCode, regionId)
-		logger.Infof("更新区域信息 HashCode[%d] RegionId[%d]\n", hashCode, regionId)
+		logger.Debugf("更新区域信息 HashCode[%d] RegionId[%d]\n", hashCode, regionId)
 	}
 	if count < 0 {
 		successful = c.mapper.Del(hashCode)

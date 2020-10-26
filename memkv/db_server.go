@@ -26,7 +26,7 @@ func NewDBServer(node *server.Node) *MemDBServer {
 	server.Id = id
 	node.RegisterHandler(server)
 	server.node = node
-	initializeMRConfig(server.db)
+	initialize(server.db)
 	return server
 }
 
@@ -51,7 +51,7 @@ func (s *MemDBServer) Handle(msgType uint32, data []byte) ([]byte, bool, error) 
 		if err != nil {
 			return nil, true, err
 		}
-		s.debugOp("Find", dbItem)
+		//s.debugOp("Find", dbItem)
 		items := s.db.Scan(dbItem.Key, dbItem.Value)
 		resp, err = marshalDbItems(items)
 		return resp, true, err
@@ -62,7 +62,7 @@ func (s *MemDBServer) Handle(msgType uint32, data []byte) ([]byte, bool, error) 
 		if err != nil {
 			return nil, true, err
 		}
-		s.debugOp("Del", dbItem)
+		//s.debugOp("Del", dbItem)
 		err = s.db.Delete(dbItem.Key)
 		return nil, true, err
 	}
@@ -76,6 +76,6 @@ func (s *MemDBServer) ReportUnreachable(id uint64) {
 func (s *MemDBServer) debugOp(op string, dbItem *proto.DbItem) {
 	key, ts, err := mvccDecode(dbItem.Key)
 	if err == nil {
-		logger.Infof("%s DbItem Key[%s] Ts[%d]\n", op, string(key), ts)
+		logger.Infof("%s DbItem Key[%v] Ts[%d]\n", op, key, ts)
 	}
 }

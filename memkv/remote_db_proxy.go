@@ -7,6 +7,7 @@ import (
 	"github.com/xp/shorttext-db/easymr/interfaces"
 	"github.com/xp/shorttext-db/memkv/proto"
 	"github.com/xp/shorttext-db/network/proxy"
+	"github.com/xp/shorttext-db/server"
 	"sync"
 )
 
@@ -16,8 +17,15 @@ type RemoteDBProxy struct {
 	c    *chooser
 }
 
-var once sync.Once
+var remoteOnce sync.Once
+var remoteDBProxy *RemoteDBProxy
 
+func GetRemoteDBProxy() *RemoteDBProxy {
+	remoteOnce.Do(func() {
+		remoteDBProxy = NewRemoteDBProxy(server.GetNodeProxy(), collaborator.GetCollaborator())
+	})
+	return remoteDBProxy
+}
 func NewRemoteDBProxy(n *proxy.NodeProxy, clbt *collaborator.Collaborator) *RemoteDBProxy {
 	r := &RemoteDBProxy{}
 	c := config.GetCase()
@@ -27,12 +35,12 @@ func NewRemoteDBProxy(n *proxy.NodeProxy, clbt *collaborator.Collaborator) *Remo
 	r.clbt = clbt
 	r.c.SetBuckets(c.GetCardList())
 	r.c.n = n
-	initializeMRConfig(nil)
+	initialize(nil)
 
 	return r
 }
 
-func (r *RemoteDBProxy) NewIterator(key Key) Iterator {
+func (r *RemoteDBProxy) NewIterator(key []byte) Iterator {
 	//var start, stop Key
 	//if len(key) > 0{
 	//	start = mvccEncode(key, lockVer)
@@ -45,10 +53,14 @@ func (r *RemoteDBProxy) NewIterator(key Key) Iterator {
 		logger.Errorf("RemoteDBProxy区间查询错误:%v", err)
 	}
 	iter := NewListIterator(data, true)
+	//debug.PrintStack()
+
 	return iter
 }
-
-func (r *RemoteDBProxy) NewScanIterator(startKey Key, endKey Key) Iterator {
+func (r *RemoteDBProxy) GetValues(key []byte) *proto.DbItems {
+	return nil
+}
+func (r *RemoteDBProxy) NewScanIterator(startKey []byte, endKey []byte, locked bool, desc bool) Iterator {
 	var start, stop Key
 	if len(startKey) > 0 {
 		start = mvccEncode(startKey, lockVer)
@@ -58,10 +70,12 @@ func (r *RemoteDBProxy) NewScanIterator(startKey Key, endKey Key) Iterator {
 	}
 	data := r.Scan(start, stop)
 	iter := NewListIterator(data, false)
+	logger.Info("NewScanIterator多键升序查询:", startKey)
+
 	return iter
 }
 
-func (r *RemoteDBProxy) NewDescendIterator(startKey Key, endKey Key) Iterator {
+func (r *RemoteDBProxy) NewDescendIterator(startKey []byte, endKey []byte) Iterator {
 	var start, stop Key
 	if len(startKey) > 0 {
 		start = mvccEncode(startKey, lockVer)
@@ -71,17 +85,15 @@ func (r *RemoteDBProxy) NewDescendIterator(startKey Key, endKey Key) Iterator {
 	}
 	data := r.Scan(start, stop)
 	iter := NewListIterator(data, true)
+	logger.Info("NewScanIterator多键降序查询:", startKey)
 	return iter
 }
-func (r *RemoteDBProxy) Put(item *proto.DbItem, ts uint64) (err error) {
+func (r *RemoteDBProxy) Put(key []byte, val []byte, ts uint64, locked bool) (err error) {
 	var to uint64
 	var hash uint32
-	//var force bool = false
-	//if ts == lockVer {
-	//	force = true
-	//}
+	item := &proto.DbItem{Key: key, Value: val}
 	to, hash = r.c.Choose(item.Key, true)
-	logger.Infof("插入数据选择区域[%d %d]\n", to, hash)
+	//logger.Infof("插入数据选择区域[%d %d]\n", to, hash)
 	item.Key = mvccEncode(item.Key, ts)
 	_, err = r.send(item, to, config.MSG_KV_SET)
 	if err == nil {
@@ -89,7 +101,8 @@ func (r *RemoteDBProxy) Put(item *proto.DbItem, ts uint64) (err error) {
 	}
 	return err
 }
-func (r *RemoteDBProxy) Delete(item *proto.DbItem, ts uint64) (err error) {
+func (r *RemoteDBProxy) Delete(key []byte, ts uint64, locked bool) (err error) {
+	item := &proto.DbItem{Key: key}
 	to, hash := r.c.Choose(item.Key, false)
 	item.Key = mvccEncode(item.Key, ts)
 	_, err = r.send(item, to, config.MSG_KV_DEL)
@@ -97,6 +110,9 @@ func (r *RemoteDBProxy) Delete(item *proto.DbItem, ts uint64) (err error) {
 		r.c.UpdateRegion(to, hash, -1)
 	}
 	return err
+}
+func (r *RemoteDBProxy) Get(key []byte, ts uint64) (val []byte, validated bool) {
+	return nil, validated
 }
 
 func (r *RemoteDBProxy) find(item *proto.DbItem) (result *proto.DbItems, err error) {
@@ -135,20 +151,20 @@ func (r *RemoteDBProxy) send(item *proto.DbItem, to uint64, op uint32) (items *p
 }
 
 func (r *RemoteDBProxy) Write(batch *Batch) error {
-	var err error
-	for _, added := range batch.addedBuf {
-		err = r.Put(added.dbItem, added.ts)
-		if err != nil {
-			return err
-		}
-	}
-	for _, deleted := range batch.deletedBuf {
-		err = r.Delete(deleted.dbItem, deleted.ts)
-		if err != nil {
-			return err
-		}
-	}
-	return err
+	//var err error
+	//for _, added := range batch.addedBuf {
+	//	err = r.Put(added.dbItem, added.ts)
+	//	if err != nil {
+	//		return err
+	//	}
+	//}
+	//for _, deleted := range batch.deletedBuf {
+	//	err = r.Delete(deleted.dbItem, deleted.ts)
+	//	if err != nil {
+	//		return err
+	//	}
+	//}
+	return nil
 }
 
 func (r *RemoteDBProxy) Close() error {

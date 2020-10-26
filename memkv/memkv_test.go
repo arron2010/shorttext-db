@@ -39,3 +39,35 @@ func TestChooser_Choose(t *testing.T) {
 	}
 	ch.Close()
 }
+
+//func encodeStringDataKey(key []byte) []byte {
+//	prefix := []byte("m")
+//	// for codec Encode, we may add extra bytes data, so here and following encode
+//	// we will use extra length like 4 for a little optimization.
+//	//fmt.Printf("###xp-> TxStructure encodeStringDataKey key:%s  prefix:%s\n",string(key),string(t.prefix))
+//	ek := make([]byte, 0, len(prefix)+len(key)+24)
+//	ek = append(ek, prefix...)
+//	ek = codec.EncodeBytes(ek, key)
+//	return codec.EncodeUint(ek, uint64(structure.StringData))
+//}
+//
+//func decodeStringDataKey(ek []byte) (string){
+////	prefix := []byte("m")
+//	ek = ek[1:]
+//	var key []byte
+//
+//	_, key, _ = codec.DecodeBytes(ek, nil)
+//
+//
+//
+//
+//
+//	return string(key)
+//}
+//
+//func TestLocalDBProxy_Encoding(t *testing.T) {
+//	buf := []byte("following")
+//	a := encodeStringDataKey(buf)
+//	str2:= decodeStringDataKey(a)
+//	fmt.Println("str2:",str2)
+//}

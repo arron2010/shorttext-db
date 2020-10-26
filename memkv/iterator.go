@@ -12,11 +12,20 @@ type ListIterator struct {
 	descend bool
 }
 
+func NewEmptytIterator() *ListIterator {
+	return NewListIterator(emptyItems, false)
+}
+
 func NewListIterator(data *proto.DbItems, descend bool) *ListIterator {
+	if data == nil {
+		data = &proto.DbItems{}
+	}
 	iter := &ListIterator{data: data.Items}
-	if len(iter.data) == 0 {
+	if len(data.Items) == 0 {
 		iter.cursor = -1
 	}
+
+	iter.data = data.Items
 	if !descend {
 		if len(iter.data) > 0 {
 			iter.cursor = 0
@@ -39,7 +48,7 @@ func (l *ListIterator) Prev() bool {
 }
 
 func (l *ListIterator) Valid() bool {
-	if len(l.data) <= 0 || l.cursor < 0 || l.cursor >= len(l.data) {
+	if l.cursor < 0 || len(l.data) <= 0 || l.cursor >= len(l.data) {
 		return false
 	}
 	return true

@@ -1,12 +1,17 @@
 package memkv
 
 import (
+	"bytes"
 	"github.com/xp/shorttext-db/glogger"
 	"github.com/xp/shorttext-db/memkv/proto"
 )
 
 type Key []byte
 type Value []byte
+
+func (k Key) HasPrefix(prefix Key) bool {
+	return bytes.HasPrefix(k, prefix)
+}
 
 const KEY_DEFAULT_VERSION = 1
 
@@ -35,10 +40,16 @@ func NewBatch() *Batch {
 	return batch
 }
 func (b *Batch) Put(key Key, val Value, ts uint64) {
+	if len(key) == 0 {
+		return
+	}
 	//writeKey := mvccEncode(key, ts)
 	b.addedBuf = append(b.addedBuf, batchItem{dbItem: &proto.DbItem{Key: key, Value: val}, ts: ts})
 }
 func (b *Batch) Delete(key Key, ts uint64) {
+	if len(key) == 0 {
+		return
+	}
 	b.deletedBuf = append(b.deletedBuf, batchItem{dbItem: &proto.DbItem{Key: key, Value: nil}, ts: ts})
 }
 
@@ -71,13 +82,15 @@ type MemDB interface {
 type KVClient interface {
 	//Put(item *DbItem) (err error)
 	//Get(key Key) (val *DbItem)
-	NewIterator(start Key) Iterator
-	NewScanIterator(startKey Key, endKey Key) Iterator
-	NewDescendIterator(startKey Key, endKey Key) Iterator
+	NewIterator(start []byte) Iterator
+	NewScanIterator(startKey []byte, endKey []byte, locked bool, desc bool) Iterator
+	NewDescendIterator(startKey []byte, endKey []byte) Iterator
 	Write(batch *Batch) error
-	Put(item *proto.DbItem, ts uint64) (err error)
-	Delete(item *proto.DbItem, ts uint64) (err error)
+	Put(key []byte, val []byte, ts uint64, locked bool) (err error)
+	Get(key []byte, ts uint64) (val []byte, validated bool)
+	Delete(key []byte, ts uint64, locked bool) (err error)
 	Close() error
+	GetValues(key []byte) *proto.DbItems
 }
 
 /*

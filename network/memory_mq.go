@@ -24,7 +24,7 @@ func NewMessageCache() *AsynCache {
 func (a *AsynCache) Put(value *Message) {
 	select {
 	case a.buffer <- value:
-		logger.Infof("消息推入通道[Term:%d From:%d To:%d]\n", value.Term, value.From, value.To)
+		logger.Debugf("消息推入通道[Term:%d From:%d To:%d]\n", value.Term, value.From, value.To)
 	}
 }
 
@@ -32,7 +32,7 @@ func (a *AsynCache) run() {
 	for {
 		select {
 		case value := <-a.buffer:
-			logger.Infof("消息从通道获取[Term:%d From:%d To:%d]\n", value.Term, value.From, value.To)
+			logger.Debugf("消息从通道获取[Term:%d From:%d To:%d]\n", value.Term, value.From, value.To)
 			a.combine(value)
 		}
 	}
