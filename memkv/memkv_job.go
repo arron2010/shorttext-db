@@ -37,7 +37,7 @@ func (m *MemKVJob) createTasks(jobInfo *interfaces.JobInfo) []*task.Task {
 		t.Consumable = "MemKVConsumer"
 		t.Result = task.Collection{}
 		t.Stage = 0
-		t.Object = jobInfo.Source.(*proto.DbQueryParam)
+		t.Object = jobInfo.Source.(*proto.DBQueryParam)
 		t.Source = *task.NewCollection()
 		t.Context = task.NewTaskContextEx()
 		tasks = append(tasks, t)

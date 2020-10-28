@@ -20,54 +20,78 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
-type DbItem struct {
+type DBItem struct {
 	Key                  []byte   `protobuf:"bytes,1,opt,name=Key,proto3" json:"Key,omitempty"`
 	Value                []byte   `protobuf:"bytes,2,opt,name=Value,proto3" json:"Value,omitempty"`
+	StartTS              uint64   `protobuf:"varint,3,opt,name=StartTS,proto3" json:"StartTS,omitempty"`
+	CommitTS             uint64   `protobuf:"varint,4,opt,name=CommitTS,proto3" json:"CommitTS,omitempty"`
+	ValueType            uint32   `protobuf:"varint,5,opt,name=ValueType,proto3" json:"ValueType,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *DbItem) Reset()         { *m = DbItem{} }
-func (m *DbItem) String() string { return proto.CompactTextString(m) }
-func (*DbItem) ProtoMessage()    {}
-func (*DbItem) Descriptor() ([]byte, []int) {
+func (m *DBItem) Reset()         { *m = DBItem{} }
+func (m *DBItem) String() string { return proto.CompactTextString(m) }
+func (*DBItem) ProtoMessage()    {}
+func (*DBItem) Descriptor() ([]byte, []int) {
 	return fileDescriptor_7acb839e425208fc, []int{0}
 }
 
-func (m *DbItem) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_DbItem.Unmarshal(m, b)
+func (m *DBItem) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_DBItem.Unmarshal(m, b)
 }
-func (m *DbItem) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_DbItem.Marshal(b, m, deterministic)
+func (m *DBItem) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_DBItem.Marshal(b, m, deterministic)
 }
-func (m *DbItem) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_DbItem.Merge(m, src)
+func (m *DBItem) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_DBItem.Merge(m, src)
 }
-func (m *DbItem) XXX_Size() int {
-	return xxx_messageInfo_DbItem.Size(m)
+func (m *DBItem) XXX_Size() int {
+	return xxx_messageInfo_DBItem.Size(m)
 }
-func (m *DbItem) XXX_DiscardUnknown() {
-	xxx_messageInfo_DbItem.DiscardUnknown(m)
+func (m *DBItem) XXX_DiscardUnknown() {
+	xxx_messageInfo_DBItem.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_DbItem proto.InternalMessageInfo
+var xxx_messageInfo_DBItem proto.InternalMessageInfo
 
-func (m *DbItem) GetKey() []byte {
+func (m *DBItem) GetKey() []byte {
 	if m != nil {
 		return m.Key
 	}
 	return nil
 }
 
-func (m *DbItem) GetValue() []byte {
+func (m *DBItem) GetValue() []byte {
 	if m != nil {
 		return m.Value
 	}
 	return nil
 }
 
-type DbQueryParam struct {
+func (m *DBItem) GetStartTS() uint64 {
+	if m != nil {
+		return m.StartTS
+	}
+	return 0
+}
+
+func (m *DBItem) GetCommitTS() uint64 {
+	if m != nil {
+		return m.CommitTS
+	}
+	return 0
+}
+
+func (m *DBItem) GetValueType() uint32 {
+	if m != nil {
+		return m.ValueType
+	}
+	return 0
+}
+
+type DBQueryParam struct {
 	StartKey             []byte   `protobuf:"bytes,1,opt,name=StartKey,proto3" json:"StartKey,omitempty"`
 	EndKey               []byte   `protobuf:"bytes,2,opt,name=EndKey,proto3" json:"EndKey,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -75,78 +99,78 @@ type DbQueryParam struct {
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *DbQueryParam) Reset()         { *m = DbQueryParam{} }
-func (m *DbQueryParam) String() string { return proto.CompactTextString(m) }
-func (*DbQueryParam) ProtoMessage()    {}
-func (*DbQueryParam) Descriptor() ([]byte, []int) {
+func (m *DBQueryParam) Reset()         { *m = DBQueryParam{} }
+func (m *DBQueryParam) String() string { return proto.CompactTextString(m) }
+func (*DBQueryParam) ProtoMessage()    {}
+func (*DBQueryParam) Descriptor() ([]byte, []int) {
 	return fileDescriptor_7acb839e425208fc, []int{1}
 }
 
-func (m *DbQueryParam) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_DbQueryParam.Unmarshal(m, b)
+func (m *DBQueryParam) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_DBQueryParam.Unmarshal(m, b)
 }
-func (m *DbQueryParam) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_DbQueryParam.Marshal(b, m, deterministic)
+func (m *DBQueryParam) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_DBQueryParam.Marshal(b, m, deterministic)
 }
-func (m *DbQueryParam) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_DbQueryParam.Merge(m, src)
+func (m *DBQueryParam) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_DBQueryParam.Merge(m, src)
 }
-func (m *DbQueryParam) XXX_Size() int {
-	return xxx_messageInfo_DbQueryParam.Size(m)
+func (m *DBQueryParam) XXX_Size() int {
+	return xxx_messageInfo_DBQueryParam.Size(m)
 }
-func (m *DbQueryParam) XXX_DiscardUnknown() {
-	xxx_messageInfo_DbQueryParam.DiscardUnknown(m)
+func (m *DBQueryParam) XXX_DiscardUnknown() {
+	xxx_messageInfo_DBQueryParam.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_DbQueryParam proto.InternalMessageInfo
+var xxx_messageInfo_DBQueryParam proto.InternalMessageInfo
 
-func (m *DbQueryParam) GetStartKey() []byte {
+func (m *DBQueryParam) GetStartKey() []byte {
 	if m != nil {
 		return m.StartKey
 	}
 	return nil
 }
 
-func (m *DbQueryParam) GetEndKey() []byte {
+func (m *DBQueryParam) GetEndKey() []byte {
 	if m != nil {
 		return m.EndKey
 	}
 	return nil
 }
 
-type DbItems struct {
-	Items                []*DbItem `protobuf:"bytes,1,rep,name=Items,proto3" json:"Items,omitempty"`
+type DBItems struct {
+	Items                []*DBItem `protobuf:"bytes,1,rep,name=Items,proto3" json:"Items,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}  `json:"-"`
 	XXX_unrecognized     []byte    `json:"-"`
 	XXX_sizecache        int32     `json:"-"`
 }
 
-func (m *DbItems) Reset()         { *m = DbItems{} }
-func (m *DbItems) String() string { return proto.CompactTextString(m) }
-func (*DbItems) ProtoMessage()    {}
-func (*DbItems) Descriptor() ([]byte, []int) {
+func (m *DBItems) Reset()         { *m = DBItems{} }
+func (m *DBItems) String() string { return proto.CompactTextString(m) }
+func (*DBItems) ProtoMessage()    {}
+func (*DBItems) Descriptor() ([]byte, []int) {
 	return fileDescriptor_7acb839e425208fc, []int{2}
 }
 
-func (m *DbItems) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_DbItems.Unmarshal(m, b)
+func (m *DBItems) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_DBItems.Unmarshal(m, b)
 }
-func (m *DbItems) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_DbItems.Marshal(b, m, deterministic)
+func (m *DBItems) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_DBItems.Marshal(b, m, deterministic)
 }
-func (m *DbItems) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_DbItems.Merge(m, src)
+func (m *DBItems) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_DBItems.Merge(m, src)
 }
-func (m *DbItems) XXX_Size() int {
-	return xxx_messageInfo_DbItems.Size(m)
+func (m *DBItems) XXX_Size() int {
+	return xxx_messageInfo_DBItems.Size(m)
 }
-func (m *DbItems) XXX_DiscardUnknown() {
-	xxx_messageInfo_DbItems.DiscardUnknown(m)
+func (m *DBItems) XXX_DiscardUnknown() {
+	xxx_messageInfo_DBItems.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_DbItems proto.InternalMessageInfo
+var xxx_messageInfo_DBItems proto.InternalMessageInfo
 
-func (m *DbItems) GetItems() []*DbItem {
+func (m *DBItems) GetItems() []*DBItem {
 	if m != nil {
 		return m.Items
 	}
@@ -154,23 +178,27 @@ func (m *DbItems) GetItems() []*DbItem {
 }
 
 func init() {
-	proto.RegisterType((*DbItem)(nil), "proto.DbItem")
-	proto.RegisterType((*DbQueryParam)(nil), "proto.DbQueryParam")
-	proto.RegisterType((*DbItems)(nil), "proto.DbItems")
+	proto.RegisterType((*DBItem)(nil), "proto.DBItem")
+	proto.RegisterType((*DBQueryParam)(nil), "proto.DBQueryParam")
+	proto.RegisterType((*DBItems)(nil), "proto.DBItems")
 }
 
 func init() { proto.RegisterFile("db_item.proto", fileDescriptor_7acb839e425208fc) }
 
 var fileDescriptor_7acb839e425208fc = []byte{
-	// 158 bytes of a gzipped FileDescriptorProto
+	// 209 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0xe2, 0x4d, 0x49, 0x8a, 0xcf,
-	0x2c, 0x49, 0xcd, 0xd5, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x62, 0x05, 0x53, 0x4a, 0x06, 0x5c,
-	0x6c, 0x2e, 0x49, 0x9e, 0x25, 0xa9, 0xb9, 0x42, 0x02, 0x5c, 0xcc, 0xde, 0xa9, 0x95, 0x12, 0x8c,
-	0x0a, 0x8c, 0x1a, 0x3c, 0x41, 0x20, 0xa6, 0x90, 0x08, 0x17, 0x6b, 0x58, 0x62, 0x4e, 0x69, 0xaa,
-	0x04, 0x13, 0x58, 0x0c, 0xc2, 0x51, 0x72, 0xe2, 0xe2, 0x71, 0x49, 0x0a, 0x2c, 0x4d, 0x2d, 0xaa,
-	0x0c, 0x48, 0x2c, 0x4a, 0xcc, 0x15, 0x92, 0xe2, 0xe2, 0x08, 0x2e, 0x49, 0x2c, 0x2a, 0x41, 0x68,
-	0x86, 0xf3, 0x85, 0xc4, 0xb8, 0xd8, 0x5c, 0xf3, 0x52, 0x40, 0x32, 0x10, 0x23, 0xa0, 0x3c, 0x25,
-	0x3d, 0x2e, 0x76, 0x88, 0xad, 0xc5, 0x42, 0xca, 0x5c, 0xac, 0x60, 0x86, 0x04, 0xa3, 0x02, 0xb3,
-	0x06, 0xb7, 0x11, 0x2f, 0xc4, 0x79, 0x7a, 0x10, 0xe9, 0x20, 0x88, 0x5c, 0x12, 0x1b, 0x58, 0xd0,
-	0x18, 0x10, 0x00, 0x00, 0xff, 0xff, 0x15, 0xc3, 0xbb, 0x36, 0xc4, 0x00, 0x00, 0x00,
+	0x2c, 0x49, 0xcd, 0xd5, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x62, 0x05, 0x53, 0x4a, 0x2d, 0x8c,
+	0x5c, 0x6c, 0x2e, 0x4e, 0x9e, 0x25, 0xa9, 0xb9, 0x42, 0x02, 0x5c, 0xcc, 0xde, 0xa9, 0x95, 0x12,
+	0x8c, 0x0a, 0x8c, 0x1a, 0x3c, 0x41, 0x20, 0xa6, 0x90, 0x08, 0x17, 0x6b, 0x58, 0x62, 0x4e, 0x69,
+	0xaa, 0x04, 0x13, 0x58, 0x0c, 0xc2, 0x11, 0x92, 0xe0, 0x62, 0x0f, 0x2e, 0x49, 0x2c, 0x2a, 0x09,
+	0x09, 0x96, 0x60, 0x56, 0x60, 0xd4, 0x60, 0x09, 0x82, 0x71, 0x85, 0xa4, 0xb8, 0x38, 0x9c, 0xf3,
+	0x73, 0x73, 0x33, 0x41, 0x52, 0x2c, 0x60, 0x29, 0x38, 0x5f, 0x48, 0x86, 0x8b, 0x13, 0xac, 0x3d,
+	0xa4, 0xb2, 0x20, 0x55, 0x82, 0x55, 0x81, 0x51, 0x83, 0x37, 0x08, 0x21, 0xa0, 0xe4, 0xc4, 0xc5,
+	0xe3, 0xe2, 0x14, 0x58, 0x9a, 0x5a, 0x54, 0x19, 0x90, 0x58, 0x94, 0x98, 0x0b, 0x32, 0x09, 0x6c,
+	0x28, 0xc2, 0x41, 0x70, 0xbe, 0x90, 0x18, 0x17, 0x9b, 0x6b, 0x5e, 0x0a, 0x48, 0x06, 0xe2, 0x2c,
+	0x28, 0x4f, 0x49, 0x8f, 0x8b, 0x1d, 0xe2, 0x93, 0x62, 0x21, 0x65, 0x2e, 0x56, 0x30, 0x43, 0x82,
+	0x51, 0x81, 0x59, 0x83, 0xdb, 0x88, 0x17, 0xe2, 0x67, 0x3d, 0x88, 0x74, 0x10, 0x44, 0x2e, 0x89,
+	0x0d, 0x2c, 0x68, 0x0c, 0x08, 0x00, 0x00, 0xff, 0xff, 0x5a, 0xba, 0xbe, 0xb3, 0x19, 0x01, 0x00,
+	0x00,
 }

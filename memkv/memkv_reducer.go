@@ -15,13 +15,13 @@ func NewMemKVReducer() *MemKVReducer {
 }
 
 func (m *MemKVReducer) Reduce(sources map[int]*task.Task) (map[int]*task.Task, *task.TaskResult, error) {
-	dbItems := make([]*proto.DbItem, 0, 4)
-	list := &proto.DbItems{}
+	dbItems := make([]*proto.DBItem, 0, 4)
+	list := &proto.DBItems{}
 	for _, t := range sources {
 		if t.Object == nil {
 			continue
 		}
-		items := t.Object.(*proto.DbItems)
+		items := t.Object.(*proto.DBItems)
 		dbItems = append(dbItems, items.Items...)
 	}
 	list.Items = dbItems

@@ -1,13 +1,11 @@
 package memkv
 
 import (
-	"github.com/xp/shorttext-db/btree"
 	"github.com/xp/shorttext-db/memkv/proto"
-	"github.com/xp/shorttext-db/utils"
 )
 
 type ListIterator struct {
-	data    []*proto.DbItem
+	data    []*proto.DBItem
 	cursor  int
 	descend bool
 }
@@ -16,9 +14,9 @@ func NewEmptytIterator() *ListIterator {
 	return NewListIterator(emptyItems, false)
 }
 
-func NewListIterator(data *proto.DbItems, descend bool) *ListIterator {
+func NewListIterator(data *proto.DBItems, descend bool) *ListIterator {
 	if data == nil {
-		data = &proto.DbItems{}
+		data = &proto.DBItems{}
 	}
 	iter := &ListIterator{data: data.Items}
 	if len(data.Items) == 0 {
@@ -68,39 +66,39 @@ func (l *ListIterator) Value() []byte {
 	return nil
 }
 
-type memdbIterator struct {
-	dbi       *DbItem
-	validated bool
-	cursor    *btree.Cursor
-}
-
-func (m *memdbIterator) Next() {
-	item := m.cursor.Next()
-	if item == nil || utils.IsNil(item) {
-		m.dbi = nil
-		m.validated = false
-		return
-	}
-	m.dbi = item.(*DbItem)
-}
-func (m *memdbIterator) Valid() bool {
-	return m.validated
-}
-
-func (m *memdbIterator) Key() []byte {
-	if m.dbi != nil {
-		return m.dbi.key
-	} else {
-		return nil
-	}
-}
-
-func (m *memdbIterator) Value() []byte {
-	if m.dbi != nil {
-		return m.dbi.val
-	} else {
-		return nil
-	}
-}
-
-//	Key()
+//type memdbIterator struct {
+//	dbi       *DBItem
+//	validated bool
+//	cursor    *btree.Cursor
+//}
+//
+//func (m *memdbIterator) Next() {
+//	item := m.cursor.Next()
+//	if item == nil || utils.IsNil(item) {
+//		m.dbi = nil
+//		m.validated = false
+//		return
+//	}
+//	m.dbi = item.(*DBItem)
+//}
+//func (m *memdbIterator) Valid() bool {
+//	return m.validated
+//}
+//
+//func (m *memdbIterator) Key() []byte {
+//	if m.dbi != nil {
+//		return m.dbi.key
+//	} else {
+//		return nil
+//	}
+//}
+//
+//func (m *memdbIterator) Value() []byte {
+//	if m.dbi != nil {
+//		return m.dbi.val
+//	} else {
+//		return nil
+//	}
+//}
+//
+////	Key()

@@ -16,11 +16,11 @@ func (m *MsgSerializer) Serialize(source interface{}) ([]byte, error) {
 	var buf []byte
 	var err error
 	switch source.(type) {
-	case *proto.DbQueryParam:
-		obj := source.(*proto.DbQueryParam)
+	case *proto.DBQueryParam:
+		obj := source.(*proto.DBQueryParam)
 		buf, err = proto2.Marshal(obj)
-	case *proto.DbItems:
-		obj := source.(*proto.DbItems)
+	case *proto.DBItems:
+		obj := source.(*proto.DBItems)
 		buf, err = proto2.Marshal(obj)
 	}
 	return buf, err
@@ -30,11 +30,11 @@ func (m *MsgSerializer) Deserialize(typeName string, payload []byte) (interface{
 	var err error
 	switch typeName {
 	case "*proto.DbQueryParam":
-		obj := &proto.DbQueryParam{}
+		obj := &proto.DBQueryParam{}
 		err = proto2.Unmarshal(payload, obj)
 		return obj, err
 	case "*proto.DbItems":
-		obj := &proto.DbItems{}
+		obj := &proto.DBItems{}
 		err = proto2.Unmarshal(payload, obj)
 		return obj, err
 	}

@@ -36,28 +36,30 @@ func (s *MemDBServer) Handle(msgType uint32, data []byte) ([]byte, bool, error) 
 
 	switch msgType {
 	case config.MSG_KV_SET:
-		dbItem := &proto.DbItem{}
+		dbItem := &proto.DBItem{}
 		err = unmarshalDbItem(data, dbItem)
 		if err != nil {
 			return nil, true, err
 		}
 		s.debugOp("Put", dbItem)
-		err = s.db.Put(dbItem)
+
+		err = s.db.Put(createDBItem(dbItem))
 		return nil, true, err
 
 	case config.MSG_KV_FIND:
-		dbItem := &proto.DbItem{}
+		dbItem := &proto.DBItem{}
 		err = unmarshalDbItem(data, dbItem)
 		if err != nil {
 			return nil, true, err
 		}
 		//s.debugOp("Find", dbItem)
-		items := s.db.Scan(dbItem.Key, dbItem.Value)
-		resp, err = marshalDbItems(items)
+		items := []*DBItem{} //s.db.Scan(dbItem.Key, dbItem.Value)
+		protoItems := createProtoDBItems(items)
+		resp, err = marshalDbItems(protoItems)
 		return resp, true, err
 
 	case config.MSG_KV_DEL:
-		dbItem := &proto.DbItem{}
+		dbItem := &proto.DBItem{}
 		err = unmarshalDbItem(data, dbItem)
 		if err != nil {
 			return nil, true, err
@@ -73,7 +75,7 @@ func (s *MemDBServer) Handle(msgType uint32, data []byte) ([]byte, bool, error) 
 func (s *MemDBServer) ReportUnreachable(id uint64) {
 
 }
-func (s *MemDBServer) debugOp(op string, dbItem *proto.DbItem) {
+func (s *MemDBServer) debugOp(op string, dbItem *proto.DBItem) {
 	key, ts, err := mvccDecode(dbItem.Key)
 	if err == nil {
 		logger.Infof("%s DbItem Key[%v] Ts[%d]\n", op, key, ts)

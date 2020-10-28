@@ -48,7 +48,7 @@ func (r *RemoteDBProxy) NewIterator(key []byte) Iterator {
 	//}
 	//data := r.scan( start, stop)
 
-	data, err := r.find(&proto.DbItem{Key: key, Value: key})
+	data, err := r.find(&proto.DBItem{Key: key, Value: key})
 	if err != nil {
 		logger.Errorf("RemoteDBProxy区间查询错误:%v", err)
 	}
@@ -57,7 +57,7 @@ func (r *RemoteDBProxy) NewIterator(key []byte) Iterator {
 
 	return iter
 }
-func (r *RemoteDBProxy) GetValues(key []byte) *proto.DbItems {
+func (r *RemoteDBProxy) GetValues(key []byte) *proto.DBItems {
 	return nil
 }
 func (r *RemoteDBProxy) NewScanIterator(startKey []byte, endKey []byte, locked bool, desc bool) Iterator {
@@ -91,7 +91,7 @@ func (r *RemoteDBProxy) NewDescendIterator(startKey []byte, endKey []byte) Itera
 func (r *RemoteDBProxy) Put(key []byte, val []byte, ts uint64, locked bool) (err error) {
 	var to uint64
 	var hash uint32
-	item := &proto.DbItem{Key: key, Value: val}
+	item := &proto.DBItem{Key: key, Value: val}
 	to, hash = r.c.Choose(item.Key, true)
 	//logger.Infof("插入数据选择区域[%d %d]\n", to, hash)
 	item.Key = mvccEncode(item.Key, ts)
@@ -102,7 +102,7 @@ func (r *RemoteDBProxy) Put(key []byte, val []byte, ts uint64, locked bool) (err
 	return err
 }
 func (r *RemoteDBProxy) Delete(key []byte, ts uint64, locked bool) (err error) {
-	item := &proto.DbItem{Key: key}
+	item := &proto.DBItem{Key: key}
 	to, hash := r.c.Choose(item.Key, false)
 	item.Key = mvccEncode(item.Key, ts)
 	_, err = r.send(item, to, config.MSG_KV_DEL)
@@ -115,7 +115,7 @@ func (r *RemoteDBProxy) Get(key []byte, ts uint64) (val []byte, validated bool) 
 	return nil, validated
 }
 
-func (r *RemoteDBProxy) find(item *proto.DbItem) (result *proto.DbItems, err error) {
+func (r *RemoteDBProxy) find(item *proto.DBItem) (result *proto.DBItems, err error) {
 	to, _ := r.c.Choose(item.Key, false)
 	if len(item.Key) > 0 {
 		item.Key = mvccEncode(item.Key, lockVer)
@@ -133,7 +133,7 @@ func (r *RemoteDBProxy) find(item *proto.DbItem) (result *proto.DbItems, err err
 	return result, err
 }
 
-func (r *RemoteDBProxy) send(item *proto.DbItem, to uint64, op uint32) (items *proto.DbItems, err error) {
+func (r *RemoteDBProxy) send(item *proto.DBItem, to uint64, op uint32) (items *proto.DBItems, err error) {
 	var req, resp []byte
 	req, err = marshalDbItem(item)
 	if err != nil {
@@ -171,9 +171,9 @@ func (r *RemoteDBProxy) Close() error {
 	return r.c.Close()
 }
 
-func (r *RemoteDBProxy) Scan(startKey Key, endKey Key) *proto.DbItems {
+func (r *RemoteDBProxy) Scan(startKey Key, endKey Key) *proto.DBItems {
 	jobInfo := interfaces.NewSimpleJobInfo("MemKVJob", false,
-		&proto.DbQueryParam{StartKey: startKey, EndKey: endKey})
+		&proto.DBQueryParam{StartKey: startKey, EndKey: endKey})
 	context := &task.TaskContext{}
 	context.Context = make(map[string]interface{})
 	result, err := r.clbt.MapReduce(jobInfo, context)
@@ -181,6 +181,6 @@ func (r *RemoteDBProxy) Scan(startKey Key, endKey Key) *proto.DbItems {
 		logger.Errorf("RemoteDBProxy区间查询错误:%v", err)
 		return NewDbItems()
 	} else {
-		return result.Content.(*proto.DbItems)
+		return result.Content.(*proto.DBItems)
 	}
 }

@@ -2,7 +2,6 @@ package memkv
 
 import (
 	"github.com/xp/shorttext-db/easymr/artifacts/task"
-	"github.com/xp/shorttext-db/memkv/proto"
 	"github.com/xp/shorttext-db/utils"
 )
 
@@ -24,11 +23,12 @@ func (m *MemKVConsumer) Consume(workerId uint, taskItem *task.Task) bool {
 	if taskItem.Object == nil {
 		return true
 	}
-	queryParam := taskItem.Object.(*proto.DbQueryParam)
+	//queryParam := taskItem.Object.(*proto.DBQueryParam)
 
-	data := m.db.Scan(queryParam.StartKey, queryParam.EndKey)
+	data := []*DBItem{} //m.db.Scan(queryParam.StartKey, queryParam.EndKey)
 	taskItem.Object = data
-	logger.Infof("完成数据库处理,记录数:%d\n", len(data.Items))
+	//TODO 后续转换成PROTO对象
+	logger.Infof("完成数据库处理,记录数:%d\n", len(data))
 
 	return true
 }

@@ -1,17 +1,21 @@
 syntax = "proto3";
 package proto;
 
-message DbItem{
+message DBItem{
     bytes   Key  = 1;
     bytes   Value  = 2;
+    uint64 StartTS =3;
+    uint64 CommitTS=4;
+    uint32 ValueType =5;
+
 }
 
-message DbQueryParam{
+message DBQueryParam{
     bytes  StartKey  = 1;
     bytes  EndKey  = 2;
 }
 
-message DbItems{
-    repeated DbItem Items =1;
+message DBItems{
+    repeated DBItem Items =1;
 }
 

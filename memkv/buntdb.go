@@ -8,16 +8,11 @@ import (
 	"io"
 	"math"
 	"os"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/tidwall/gjson"
-	"github.com/tidwall/grect"
-	"github.com/tidwall/match"
-	"github.com/tidwall/rtree"
 	"github.com/xp/shorttext-db/btree"
 )
 
@@ -77,6 +72,19 @@ type DB struct {
 	lastaofsz int               // the size of the last shrink aof size
 	id        uint32            //数据库标识
 
+}
+type DBItem struct {
+	Key         Key
+	RawKey      Key
+	Val         Value
+	ValueType   uint32
+	StartTS     uint64
+	CommitTS    uint64
+	Op          uint32
+	Ttl         uint64
+	ForUpdateTS uint64
+	TxnSize     uint64
+	MinCommitTS uint64
 }
 
 // SyncPolicy represents how often data is synced to disk.
@@ -206,7 +214,7 @@ func (db *DB) Save(wr io.Writer) error {
 	var buf []byte
 	// iterated through every item in the database and write to the buffer
 	db.keys.Ascend(func(item btree.Item) bool {
-		dbi := item.(*DbItem)
+		dbi := item.(*DBItem)
 		buf = dbi.writeSetTo(buf)
 		if len(buf) > 1024*1024*4 {
 			// flush when buffer is over 4MB
@@ -251,82 +259,6 @@ func (db *DB) PersistDB() error {
 	return nil
 }
 
-// index represents a b-tree or r-tree index and also acts as the
-// b-tree/r-tree context for itself.
-type index struct {
-	btr     *btree.BTree                           // contains the items
-	rtr     *rtree.RTree                           // contains the items
-	name    string                                 // name of the index
-	pattern string                                 // a required key pattern
-	less    func(a, b Value) bool                  // less comparison function
-	rect    func(item string) (min, max []float64) // rect from string function
-	db      *DB                                    // the origin database
-	opts    IndexOptions                           // index options
-}
-
-// match matches the pattern to the key
-func (idx *index) match(key string) bool {
-	if idx.pattern == "*" {
-		return true
-	}
-	if idx.opts.CaseInsensitiveKeyMatching {
-		for i := 0; i < len(key); i++ {
-			if key[i] >= 'A' && key[i] <= 'Z' {
-				key = strings.ToLower(key)
-				break
-			}
-		}
-	}
-	return match.Match(key, idx.pattern)
-}
-
-// clearCopy creates a copy of the index, but with an empty dataset.
-func (idx *index) clearCopy() *index {
-	// copy the index meta information
-	nidx := &index{
-		name:    idx.name,
-		pattern: idx.pattern,
-		db:      idx.db,
-		less:    idx.less,
-		rect:    idx.rect,
-		opts:    idx.opts,
-	}
-	// initialize with empty trees
-	if nidx.less != nil {
-		nidx.btr = btree.New(btreeDegrees, nidx)
-	}
-	if nidx.rect != nil {
-		nidx.rtr = rtree.New(nidx)
-	}
-	return nidx
-}
-
-// rebuild rebuilds the index
-func (idx *index) rebuild() {
-	// initialize trees
-	if idx.less != nil {
-		idx.btr = btree.New(btreeDegrees, idx)
-	}
-	if idx.rect != nil {
-		idx.rtr = rtree.New(idx)
-	}
-	// iterate through all keys and fill the index
-	idx.db.keys.Ascend(func(item btree.Item) bool {
-		dbi := item.(*DbItem)
-		//if !idx.match(dbi.key) {
-		//	// does not match the pattern, continue
-		//	return true
-		//}
-		if idx.less != nil {
-			idx.btr.ReplaceOrInsert(dbi)
-		}
-		//if idx.rect != nil {
-		//	idx.rtr.Insert(dbi)
-		//}
-		return true
-	})
-}
-
 // CreateIndex builds a new index and populates it with items.
 // The items are ordered in an b-tree and can be retrieved using the
 // Ascend* and Descend* methods.
@@ -343,7 +275,7 @@ func (idx *index) rebuild() {
 // There are some default less function that can be used such as
 // IndexString, IndexBinary, etc.
 func (db *DB) CreateIndex(name, pattern string,
-	less ...func(a, b Value) bool) error {
+	less ...func(a, b *DBItem) bool) error {
 	return db.Update(func(tx *Tx) error {
 		return tx.CreateIndex(name, pattern, less...)
 	})
@@ -354,7 +286,7 @@ func (db *DB) CreateIndex(name, pattern string,
 // Ascend* and Descend* methods.
 // If a previous index with the same name exists, that index will be deleted.
 func (db *DB) ReplaceIndex(name, pattern string,
-	less ...func(a, b Value) bool) error {
+	less ...func(a, b *DBItem) bool) error {
 	return db.Update(func(tx *Tx) error {
 		err := tx.CreateIndex(name, pattern, less...)
 		if err != nil {
@@ -364,49 +296,6 @@ func (db *DB) ReplaceIndex(name, pattern string,
 					return err
 				}
 				return tx.CreateIndex(name, pattern, less...)
-			}
-			return err
-		}
-		return nil
-	})
-}
-
-// CreateSpatialIndex builds a new index and populates it with items.
-// The items are organized in an r-tree and can be retrieved using the
-// Intersects method.
-// An error will occur if an index with the same name already exists.
-//
-// The rect function converts a string to a rectangle. The rectangle is
-// represented by two arrays, min and max. Both arrays may have a length
-// between 1 and 20, and both arrays must match in length. A length of 1 is a
-// one dimensional rectangle, and a length of 4 is a four dimension rectangle.
-// There is support for up to 20 dimensions.
-// The values of min must be less than the values of max at the same dimension.
-// Thus min[0] must be less-than-or-equal-to max[0].
-// The IndexRect is a default function that can be used for the rect
-// parameter.
-func (db *DB) CreateSpatialIndex(name, pattern string,
-	rect func(item string) (min, max []float64)) error {
-	return db.Update(func(tx *Tx) error {
-		return tx.CreateSpatialIndex(name, pattern, rect)
-	})
-}
-
-// ReplaceSpatialIndex builds a new index and populates it with items.
-// The items are organized in an r-tree and can be retrieved using the
-// Intersects method.
-// If a previous index with the same name exists, that index will be deleted.
-func (db *DB) ReplaceSpatialIndex(name, pattern string,
-	rect func(item string) (min, max []float64)) error {
-	return db.Update(func(tx *Tx) error {
-		err := tx.CreateSpatialIndex(name, pattern, rect)
-		if err != nil {
-			if err == ErrIndexExists {
-				err := tx.DropIndex(name)
-				if err != nil {
-					return err
-				}
-				return tx.CreateSpatialIndex(name, pattern, rect)
 			}
 			return err
 		}
@@ -462,13 +351,13 @@ func (db *DB) SetConfig(config Config) error {
 // insertIntoDatabase performs inserts an item in to the database and updates
 // all indexes. If a previous item with the same key already exists, that item
 // will be replaced with the new one, and return the previous item.
-func (db *DB) insertIntoDatabase(item *DbItem) *DbItem {
-	var pdbi *DbItem
+func (db *DB) insertIntoDatabase(item *DBItem) *DBItem {
+	var pdbi *DBItem
 	prev := db.keys.ReplaceOrInsert(item)
 	if prev != nil {
 		// A previous item was removed from the keys tree. Let's
 		// fully delete this item from all indexes.
-		pdbi = prev.(*DbItem)
+		pdbi = prev.(*DBItem)
 		//if pdbi.opts != nil && pdbi.opts.ex {
 		//	// Remove it from the exipres tree.
 		//	db.exps.Delete(pdbi)
@@ -507,16 +396,16 @@ func (db *DB) insertIntoDatabase(item *DbItem) *DbItem {
 }
 
 // deleteFromDatabase removes and item from the database and indexes. The input
-// item must only have the key field specified thus "&DbItem{key: key}" is all
+// item must only have the key field specified thus "&DBItem{key: key}" is all
 // that is needed to fully remove the item with the matching key. If an item
 // with the matching key was found in the database, it will be removed and
 // returned to the caller. A nil return value means that the item was not
 // found in the database
-func (db *DB) deleteFromDatabase(item *DbItem) *DbItem {
-	var pdbi *DbItem
+func (db *DB) deleteFromDatabase(item *DBItem) *DBItem {
+	var pdbi *DBItem
 	prev := db.keys.Delete(item)
 	if prev != nil {
-		pdbi = prev.(*DbItem)
+		pdbi = prev.(*DBItem)
 		//if pdbi.opts != nil && pdbi.opts.ex {
 		//	// Remove it from the exipres tree.
 		//	db.exps.Delete(pdbi)
@@ -546,7 +435,7 @@ func (db *DB) backgroundManager() {
 		// Open a standard view. This will take a full lock of the
 		// database thus allowing for access to anything we need.
 		var onExpired func([]Key)
-		var expired []*DbItem
+		var expired []*DBItem
 		var onExpiredSync func(key Key, value Value, tx *Tx) error
 		err := db.Update(func(tx *Tx) error {
 			onExpired = db.config.OnExpired
@@ -565,15 +454,15 @@ func (db *DB) backgroundManager() {
 				}
 			}
 			// produce a list of expired items that need removing
-			//db.exps.AscendLessThan(&DbItem{
+			//db.exps.AscendLessThan(&DBItem{
 			//	opts: &dbItemOpts{ex: true, exat: time.Now()},
 			//}, func(item btree.Item) bool {
-			//	expired = append(expired, item.(*DbItem))
+			//	expired = append(expired, item.(*DBItem))
 			//	return true
 			//})
 			if onExpired == nil && onExpiredSync == nil {
 				for _, itm := range expired {
-					if _, err := tx.Delete(itm.key); err != nil {
+					if _, err := tx.Delete(itm.Key); err != nil {
 						// it's ok to get a "not found" because the
 						// 'Delete' method reports "not found" for
 						// expired items.
@@ -584,7 +473,7 @@ func (db *DB) backgroundManager() {
 				}
 			} else if onExpiredSync != nil {
 				for _, itm := range expired {
-					if err := onExpiredSync(itm.key, itm.val, tx); err != nil {
+					if err := onExpiredSync(itm.Key, itm.Val, tx); err != nil {
 						return err
 					}
 				}
@@ -599,7 +488,7 @@ func (db *DB) backgroundManager() {
 		if onExpired != nil && len(expired) > 0 {
 			keys := make([]Key, 0, 32)
 			for _, itm := range expired {
-				keys = append(keys, itm.key)
+				keys = append(keys, itm.Key)
 			}
 			onExpired(keys)
 		}
@@ -682,12 +571,12 @@ func (db *DB) Shrink() error {
 			}
 			done = true
 			var n int
-			db.keys.AscendGreaterOrEqual(&DbItem{key: pivot},
+			db.keys.AscendGreaterOrEqual(&DBItem{Key: pivot},
 				func(item btree.Item) bool {
-					dbi := item.(*DbItem)
+					dbi := item.(*DBItem)
 					// 1000 items or 64MB buffer
 					if n > 1000 || len(buf) > 64*1024*1024 {
-						pivot = dbi.key
+						pivot = dbi.Key
 						done = false
 						return false
 					}
@@ -864,7 +753,7 @@ func (db *DB) readLoad(rd io.Reader, modTime time.Time) error {
 			if len(parts) < 3 || len(parts) == 4 || len(parts) > 5 {
 				return ErrInvalid
 			}
-			db.insertIntoDatabase(&DbItem{key: []byte(parts[1]), val: []byte(parts[2])})
+			db.insertIntoDatabase(&DBItem{Key: []byte(parts[1]), Val: []byte(parts[2])})
 
 			//if len(parts) == 5 {
 			//	if strings.ToLower(parts[3]) != "ex" {
@@ -877,8 +766,8 @@ func (db *DB) readLoad(rd io.Reader, modTime time.Time) error {
 			//	now := time.Now()
 			//	dur := (time.Duration(ex) * time.Second) - now.Sub(modTime)
 			//	if dur > 0 {
-			//		db.insertIntoDatabase(&DbItem{
-			//			key: []byte(parts[1]),
+			//		db.insertIntoDatabase(&DBItem{
+			//			Key: []byte(parts[1]),
 			//			val: []byte(parts[2]),
 			//			opts: &dbItemOpts{
 			//				ex:   true,
@@ -887,7 +776,7 @@ func (db *DB) readLoad(rd io.Reader, modTime time.Time) error {
 			//		})
 			//	}
 			//} else {
-			//	db.insertIntoDatabase(&DbItem{key: []byte(parts[1]), val: []byte(parts[2])})
+			//	db.insertIntoDatabase(&DBItem{Key: []byte(parts[1]), val: []byte(parts[2])})
 			//}
 		} else if (parts[0][0] == 'd' || parts[0][0] == 'D') &&
 			(parts[0][1] == 'e' || parts[0][1] == 'E') &&
@@ -896,7 +785,7 @@ func (db *DB) readLoad(rd io.Reader, modTime time.Time) error {
 			if len(parts) != 2 {
 				return ErrInvalid
 			}
-			db.deleteFromDatabase(&DbItem{key: []byte(parts[1])})
+			db.deleteFromDatabase(&DBItem{Key: []byte(parts[1])})
 		} else if (parts[0][0] == 'f' || parts[0][0] == 'F') &&
 			strings.ToLower(parts[0]) == "flushdb" {
 			db.keys = btree.New(btreeDegrees, nil)
@@ -929,22 +818,21 @@ func (db *DB) load() error {
 	db.lastaofsz = int(pos)
 	return nil
 }
-func (db *DB) Put(item *proto.DbItem) (err error) {
+func (db *DB) Put(item *DBItem) (err error) {
 	tx := &Tx{
 		db: db, writable: true,
 	}
-	_, _, err = tx.Set(item.Key, item.Value)
+	_, _, err = tx.Set(item)
 	return err
 }
-func (db *DB) Get(key Key) (val *proto.DbItem) {
-	val = &proto.DbItem{}
+func (db *DB) Get(key Key) (val *DBItem) {
+	val = &DBItem{}
 	tx := &Tx{
 		db: db, writable: true,
 	}
 	item := tx.db.get(key)
 	if item != nil {
-		val.Key = item.key
-		val.Value = item.val
+		val = item
 	}
 	return val
 }
@@ -961,45 +849,32 @@ const lockVer uint64 = math.MaxUint64
 func (db *DB) SetId(id uint32) {
 	db.id = id
 }
-func (db *DB) Find(key Key) *proto.DbItems {
-	result := make([]*proto.DbItem, 0)
+
+func (db *DB) Find(key Key) *proto.DBItems {
+	result := make([]*proto.DBItem, 0)
 	stop := mvccEncode(key, 0)
 	start := mvccEncode(key, lockVer)
 	tx := &Tx{
 		db: db, writable: true,
 	}
-	tx.scanKeys(start, stop, func(dbi *DbItem) bool {
-		result = append(result, &proto.DbItem{Key: dbi.key, Value: dbi.val})
+	tx.scanKeys(start, stop, func(dbi *DBItem) bool {
+		result = append(result, &proto.DBItem{Key: dbi.Key, Value: dbi.Val})
 		return true
 	})
-	return &proto.DbItems{Items: result}
+	return &proto.DBItems{Items: result}
 }
 
-func (db *DB) Scan(startKey Key, endKey Key) *proto.DbItems {
-	//var start, stop Key
-	//if len(startKey) > 0 {
-	//	start = mvccEncode(startKey, lockVer)
-	//}
-	//if len(endKey) > 0 {
-	//	stop = mvccEncode(endKey, lockVer)
-	//}
-
-	result := make([]*proto.DbItem, 0)
-	tx := &Tx{
-		db: db, writable: true,
-	}
-	tx.scanKeys(startKey, endKey, func(dbi *DbItem) bool {
-		result = append(result, &proto.DbItem{Key: dbi.key, Value: dbi.val})
-		return true
+func (db *DB) Ascend(index string,
+	iterator func(key Key, value *DBItem) bool) error {
+	return db.View(func(tx *Tx) error {
+		return tx.scan(false, false, false, index, nil, nil, iterator)
 	})
-
-	return &proto.DbItems{Items: result}
 }
 
-func (db *DB) GetByRange(start Key, stop Key) []*DbItem {
-	result := make([]*DbItem, 0)
+func (db *DB) GetByRange(start Key, stop Key) []*DBItem {
+	result := make([]*DBItem, 0)
 	db.managed(true, func(tx *Tx) error {
-		tx.scanKeys(start, stop, func(dbi *DbItem) bool {
+		tx.scanKeys(start, stop, func(dbi *DBItem) bool {
 			result = append(result, dbi)
 			return true
 		})
@@ -1066,37 +941,12 @@ func (db *DB) Update(fn func(tx *Tx) error) error {
 }
 
 // get return an item or nil if not found.
-func (db *DB) get(key Key) *DbItem {
-	item := db.keys.Get(&DbItem{key: key})
+func (db *DB) get(key Key) *DBItem {
+	item := db.keys.Get(&DBItem{Key: key})
 	if item != nil {
-		return item.(*DbItem)
+		return item.(*DBItem)
 	}
 	return nil
-}
-
-// Tx represents a transaction on the database. This transaction can either be
-// read-only or read/write. Read-only transactions can be used for retrieving
-// values for keys and iterating through keys and values. Read/write
-// transactions can set and delete keys.
-//
-// All transactions must be committed or rolled-back when done.
-type Tx struct {
-	db       *DB             // the underlying database.
-	writable bool            // when false mutable operations fail.
-	funcd    bool            // when true Commit and Rollback panic.
-	wc       *txWriteContext // context for writable transactions.
-}
-
-type txWriteContext struct {
-	// rollback when deleteAll is called
-	rbkeys *btree.BTree      // a tree of all item ordered by key
-	rbexps *btree.BTree      // a tree of items ordered by expiration
-	rbidxs map[string]*index // the index trees.
-
-	rollbackItems   map[string]*DbItem // details for rolling back tx.
-	commitItems     map[string]*DbItem // details for committing tx.
-	itercount       int                // stack of iterators
-	rollbackIndexes map[string]*index  // details for dropped indexes.
 }
 
 // DeleteAll deletes all items from the database.
@@ -1128,7 +978,7 @@ func (tx *Tx) DeleteAll() error {
 	}
 
 	// always clear out the commits
-	tx.wc.commitItems = make(map[string]*DbItem)
+	tx.wc.commitItems = make(map[string]*DBItem)
 
 	return nil
 }
@@ -1150,132 +1000,27 @@ func (db *DB) Begin(writable bool) (*Tx, error) {
 		tx.unlock()
 		return nil, ErrDatabaseClosed
 	}
-	//if writable {
-	//	// writable transactions have a writeContext object that
-	//	// contains information about changes to the database.
-	//	tx.wc = &txWriteContext{}
-	//	tx.wc.rollbackItems = make(map[string]*DbItem)
-	//	tx.wc.rollbackIndexes = make(map[string]*index)
-	//	if db.persist {
-	//		tx.wc.commitItems = make(map[string]*DbItem)
-	//	}
-	//}
 	return tx, nil
 }
-
-// lock locks the database based on the transaction type.
-func (tx *Tx) lock() {
-	if tx.writable {
-		tx.db.mu.Lock()
-	} else {
-		tx.db.mu.RLock()
-	}
+func (db *DB) AscendGreaterOrEqual(index string, pivot *DBItem,
+	iterator func(key Key, value *DBItem) bool) error {
+	return db.View(func(tx *Tx) error {
+		return tx.AscendGreaterOrEqual(index, pivot, iterator)
+	})
 }
 
-// unlock unlocks the database based on the transaction type.
-func (tx *Tx) unlock() {
-	if tx.writable {
-		tx.db.mu.Unlock()
-	} else {
-		tx.db.mu.RUnlock()
-	}
+func (db *DB) AscendRange(index string, greaterOrEqual, lessThan *DBItem,
+	iterator func(key Key, value *DBItem) bool) error {
+	return db.View(func(tx *Tx) error {
+		return tx.AscendRange(index, greaterOrEqual, lessThan, iterator)
+	})
 }
 
-// rollbackInner handles the underlying rollback logic.
-// Intended to be called from Commit() and Rollback().
-func (tx *Tx) rollbackInner() {
-	// rollback the deleteAll if needed
-	if tx.wc.rbkeys != nil {
-		tx.db.keys = tx.wc.rbkeys
-		tx.db.idxs = tx.wc.rbidxs
-		tx.db.exps = tx.wc.rbexps
-	}
-	for key, item := range tx.wc.rollbackItems {
-		tx.db.deleteFromDatabase(&DbItem{key: []byte(key)})
-		if item != nil {
-			// When an item is not nil, we will need to reinsert that item
-			// into the database overwriting the current one.
-			tx.db.insertIntoDatabase(item)
-		}
-	}
-	for name, idx := range tx.wc.rollbackIndexes {
-		delete(tx.db.idxs, name)
-		if idx != nil {
-			// When an index is not nil, we will need to rebuilt that index
-			// this could be an expensive process if the database has many
-			// items or the index is complex.
-			tx.db.idxs[name] = idx
-			idx.rebuild()
-		}
-	}
-}
-
-// Commit writes all changes to disk.
-// An error is returned when a write error occurs, or when a Commit() is called
-// from a read-only transaction.
-func (tx *Tx) Commit() error {
-	if tx.funcd {
-		panic("managed tx commit not allowed")
-	}
-	if tx.db == nil {
-		return ErrTxClosed
-	} else if !tx.writable {
-		return ErrTxNotWritable
-	}
-	var err error
-	//if tx.db.persist && (len(tx.wc.commitItems) > 0 || tx.wc.rbkeys != nil) {
-	//	tx.db.buf = tx.db.buf[:0]
-	//	// write a flushdb if a deleteAll was called.
-	//	if tx.wc.rbkeys != nil {
-	//		tx.db.buf = append(tx.db.buf, "*1\r\n$7\r\nflushdb\r\n"...)
-	//	}
-	//	// Each committed record is written to disk
-	//	for key, item := range tx.wc.commitItems {
-	//		if item == nil {
-	//			tx.db.buf = (&DbItem{key: []byte(key)}).writeDeleteTo(tx.db.buf)
-	//		} else {
-	//			tx.db.buf = item.writeSetTo(tx.db.buf)
-	//		}
-	//	}
-	//	// Flushing the buffer only once per transaction.
-	//	// If this operation fails then the write did failed and we must
-	//	// rollback.
-	//	if _, err = tx.db.file.Write(tx.db.buf); err != nil {
-	//		tx.rollbackInner()
-	//	}
-	//	if tx.db.config.SyncPolicy == Always {
-	//		_ = tx.db.file.Sync()
-	//	}
-	//	// Increment the number of flushes. The background syncing uses this.
-	//	tx.db.flushes++
-	//}
-	// Unlock the database and allow for another writable transaction.
-	tx.unlock()
-	// Clear the db field to disable this transaction from future use.
-	tx.db = nil
-	return err
-}
-
-// Rollback closes the transaction and reverts all mutable operations that
-// were performed on the transaction such as Set() and Delete().
-//
-// Read-only transactions can only be rolled back, not committed.
-func (tx *Tx) Rollback() error {
-	if tx.funcd {
-		panic("managed tx rollback not allowed")
-	}
-	if tx.db == nil {
-		return ErrTxClosed
-	}
-	// The rollback func does the heavy lifting.
-	//if tx.writable {
-	//	tx.rollbackInner()
-	//}
-	// unlock the database for more transactions.
-	tx.unlock()
-	// Clear the db field to disable this transaction from future use.
-	tx.db = nil
-	return nil
+func (db *DB) DescendRange(index string, greaterOrEqual, lessThan *DBItem,
+	iterator func(key Key, value *DBItem) bool) error {
+	return db.View(func(tx *Tx) error {
+		return tx.DescendRange(index, greaterOrEqual, lessThan, iterator)
+	})
 }
 
 // dbItemOpts holds various meta information about an item.
@@ -1284,26 +1029,6 @@ type dbItemOpts struct {
 	exat time.Time // when does this item expire?
 }
 
-type DbItem struct {
-	key Key
-	val Value
-	//	ts      uint64
-	//opts    *dbItemOpts // optional meta information
-	//keyless bool        // keyless item for scanning
-
-}
-
-func (d *DbItem) Key() []byte {
-	return d.key
-}
-
-func (d *DbItem) Value() []byte {
-	return d.val
-}
-
-func (d *DbItem) Valid() bool {
-	return len(d.key) > 0
-}
 func appendArray(buf []byte, count int) []byte {
 	buf = append(buf, '*')
 	buf = append(buf, strconv.FormatInt(int64(count), 10)...)
@@ -1329,7 +1054,7 @@ func appendBulkBytes(buf []byte, s []byte) []byte {
 }
 
 // writeSetTo writes an item as a single SET record to the a bufio Writer.
-func (dbi *DbItem) writeSetTo(buf []byte) []byte {
+func (dbi *DBItem) writeSetTo(buf []byte) []byte {
 	//if dbi.opts != nil && dbi.opts.ex {
 	//	ex := dbi.opts.exat.Sub(time.Now()) / time.Second
 	//	buf = appendArray(buf, 5)
@@ -1341,28 +1066,28 @@ func (dbi *DbItem) writeSetTo(buf []byte) []byte {
 	//} else {
 	//	buf = appendArray(buf, 3)
 	//	buf = appendBulkString(buf, "set")
-	//	buf = appendBulkBytes(buf, dbi.key)
+	//	buf = appendBulkBytes(buf, dbi.Key)
 	//	buf = appendBulkBytes(buf, dbi.val)
 	//}
 
 	buf = appendArray(buf, 3)
 	buf = appendBulkString(buf, "set")
-	buf = appendBulkBytes(buf, dbi.key)
-	buf = appendBulkBytes(buf, dbi.val)
+	buf = appendBulkBytes(buf, dbi.Key)
+	buf = appendBulkBytes(buf, dbi.Val)
 	return buf
 }
 
 // writeSetTo writes an item as a single DEL record to the a bufio Writer.
-func (dbi *DbItem) writeDeleteTo(buf []byte) []byte {
+func (dbi *DBItem) writeDeleteTo(buf []byte) []byte {
 	buf = appendArray(buf, 2)
 	buf = appendBulkString(buf, "del")
-	buf = appendBulkBytes(buf, dbi.key)
+	buf = appendBulkBytes(buf, dbi.Key)
 	return buf
 }
 
 // expired evaluates id the item has expired. This will always return false when
 // the item does not have `opts.ex` set to true.
-func (dbi *DbItem) expired() bool {
+func (dbi *DBItem) expired() bool {
 	return false
 	//return dbi.opts != nil && dbi.opts.ex && time.Now().After(dbi.opts.exat)
 }
@@ -1372,22 +1097,13 @@ func (dbi *DbItem) expired() bool {
 // used for b-tree ordering.
 var maxTime = time.Unix(1<<63-62135596801, 999999999)
 
-// expiresAt will return the time when the item will expire. When an item does
-// not expire `maxTime` is used.
-//func (dbi *DbItem) expiresAt() time.Time {
-//	if dbi.opts == nil || !dbi.opts.ex {
-//		return maxTime
-//	}
-//	return dbi.opts.exat
-//}
-
 // Less determines if a b-tree item is less than another. This is required
 // for ordering, inserting, and deleting items from a b-tree. It's important
 // to note that the ctx parameter is used to help with determine which
 // formula to use on an item. Each b-tree should use a different ctx when
 // sharing the same item.
-func (dbi *DbItem) Less(item btree.Item, ctx interface{}) bool {
-	dbi2 := item.(*DbItem)
+func (dbi *DBItem) Less(item btree.Item, ctx interface{}) bool {
+	dbi2 := item.(*DBItem)
 
 	//if dbi.sortKey !=nil && dbi2.sortKey !=nil{
 	//	return bytes.Compare(dbi.sortKey, dbi2.sortKey) < 0
@@ -1406,652 +1122,33 @@ func (dbi *DbItem) Less(item btree.Item, ctx interface{}) bool {
 	case *index:
 		if ctx.less != nil {
 			// Using an index
-			if ctx.less(dbi.val, dbi2.val) {
+			if ctx.less(dbi, dbi2) {
 				return true
 			}
-			if ctx.less(dbi2.val, dbi.val) {
+			if ctx.less(dbi2, dbi) {
 				return false
 			}
 		}
 	}
 
-	// Always fall back to the key comparison. This creates absolute uniqueness.
+	// Always fall back to the Key comparison. This creates absolute uniqueness.
 	//if dbi.keyless {
 	//	return false
 	//} else if dbi2.keyless {
 	//	return true
 	//}
-	return bytes.Compare(dbi.key, dbi2.key) < 0
+	return bytes.Compare(dbi.Key, dbi2.Key) < 0
 }
-
-// Rect converts a string to a rectangle.
-// An invalid rectangle will cause a panic.
-//func (dbi *DbItem) Rect(ctx interface{}) (min, max []float64) {
-//	switch ctx := ctx.(type) {
-//	case *index:
-//		return ctx.rect(dbi.val)
-//	}
-//	return nil, nil
-//}
 
 // SetOptions represents options that may be included with the Set() command.
 type SetOptions struct {
-	// Expires indicates that the Set() key-value will expire
+	// Expires indicates that the Set() Key-value will expire
 	Expires bool
-	// TTL is how much time the key-value will exist in the database
+	// TTL is how much time the Key-value will exist in the database
 	// before being evicted. The Expires field must also be set to true.
 	// TTL stands for Time-To-Live.
 	TTL time.Duration
-
-	//排序键
-	SortKey []byte
 }
-
-// GetLess returns the less function for an index. This is handy for
-// doing ad-hoc compares inside a transaction.
-// Returns ErrNotFound if the index is not found or there is no less
-// function bound to the index
-func (tx *Tx) GetLess(index string) (func(a, b Value) bool, error) {
-	if tx.db == nil {
-		return nil, ErrTxClosed
-	}
-	idx, ok := tx.db.idxs[index]
-	if !ok || idx.less == nil {
-		return nil, ErrNotFound
-	}
-	return idx.less, nil
-}
-
-// GetRect returns the rect function for an index. This is handy for
-// doing ad-hoc searches inside a transaction.
-// Returns ErrNotFound if the index is not found or there is no rect
-// function bound to the index
-func (tx *Tx) GetRect(index string) (func(s string) (min, max []float64),
-	error) {
-	if tx.db == nil {
-		return nil, ErrTxClosed
-	}
-	idx, ok := tx.db.idxs[index]
-	if !ok || idx.rect == nil {
-		return nil, ErrNotFound
-	}
-	return idx.rect, nil
-}
-
-// Set inserts or replaces an item in the database based on the key.
-// The opt params may be used for additional functionality such as forcing
-// the item to be evicted at a specified time. When the return value
-// for err is nil the operation succeeded. When the return value of
-// replaced is true, then the operaton replaced an existing item whose
-// value will be returned through the previousValue variable.
-// The results of this operation will not be available to other
-// transactions until the current transaction has successfully committed.
-//
-// Only a writable transaction can be used with this operation.
-// This operation is not allowed during iterations such as Ascend* & Descend*.
-func (tx *Tx) Set(key Key, value Value) (previousValue Value,
-	replaced bool, err error) {
-	if tx.db == nil {
-		return nil, false, ErrTxClosed
-	} else if !tx.writable {
-		return nil, false, ErrTxNotWritable
-	}
-
-	var item *DbItem
-	item = &DbItem{key: key, val: value}
-	//if opts != nil {
-	//	if opts.Expires {
-	//		// The caller is requesting that this item expires. Convert the
-	//		// TTL to an absolute time and bind it to the item.
-	//		item.opts = &dbItemOpts{ex: true, exat: time.Now().Add(opts.TTL)}
-	//	}
-	//}
-	// Insert the item into the keys tree.
-	prev := tx.db.insertIntoDatabase(item)
-
-	if prev != nil && !prev.expired() {
-		previousValue, replaced = prev.val, true
-	}
-
-	// insert into the rollback map if there has not been a deleteAll.
-	//if tx.wc.rbkeys == nil {
-	//	if prev == nil {
-	//		// An item with the same key did not previously exist. Let's
-	//		// create a rollback entry with a nil value. A nil value indicates
-	//		// that the entry should be deleted on rollback. When the value is
-	//		// *not* nil, that means the entry should be reverted.
-	//		tx.wc.rollbackItems[string(key)] = nil
-	//	} else {
-	//		// A previous item already exists in the database. Let's create a
-	//		// rollback entry with the item as the value. We need to check the
-	//		// map to see if there isn't already an item that matches the
-	//		// same key.
-	//		if _, ok := tx.wc.rollbackItems[string(key)]; !ok {
-	//			tx.wc.rollbackItems[string(key)] = prev
-	//		}
-	//		if !prev.expired() {
-	//			previousValue, replaced = prev.val, true
-	//		}
-	//	}
-	//}
-	// For commits we simply assign the item to the map. We use this map to
-	// write the entry to disk.
-	//if tx.db.persist {
-	//	tx.wc.commitItems[string(key)] = item
-	//}
-	return previousValue, replaced, nil
-}
-
-// Get returns a value for a key. If the item does not exist or if the item
-// has expired then ErrNotFound is returned. If ignoreExpired is true, then
-// the found value will be returned even if it is expired.
-func (tx *Tx) Get(key Key, ignoreExpired ...bool) (val Value, err error) {
-	if tx.db == nil {
-		return nil, ErrTxClosed
-	}
-	var ignore bool
-	if len(ignoreExpired) != 0 {
-		ignore = ignoreExpired[0]
-	}
-	item := tx.db.get(key)
-	if item == nil || (item.expired() && !ignore) {
-		// The item does not exists or has expired. Let's assume that
-		// the caller is only interested in items that have not expired.
-		return nil, ErrNotFound
-	}
-	return item.val, nil
-}
-
-// Delete removes an item from the database based on the item's key. If the item
-// does not exist or if the item has expired then ErrNotFound is returned.
-//
-// Only a writable transaction can be used for this operation.
-// This operation is not allowed during iterations such as Ascend* & Descend*.
-func (tx *Tx) Delete(key Key) (val Value, err error) {
-	if tx.db == nil {
-		return nil, ErrTxClosed
-	} else if !tx.writable {
-		return nil, ErrTxNotWritable
-	}
-
-	//else if tx.wc.itercount > 0 {
-	//	return nil, ErrTxIterating
-	//}
-	item := tx.db.deleteFromDatabase(&DbItem{key: key})
-	if item == nil {
-		return nil, ErrNotFound
-	}
-	// create a rollback entry if there has not been a deleteAll call.
-	//if tx.wc.rbkeys == nil {
-	//	if _, ok := tx.wc.rollbackItems[string(key)]; !ok {
-	//		tx.wc.rollbackItems[string(key)] = item
-	//	}
-	//}
-	//if tx.db.persist {
-	//	tx.wc.commitItems[string(key)] = nil
-	//}
-	// Even though the item has been deleted, we still want to check
-	// if it has expired. An expired item should not be returned.
-	if item.expired() {
-		// The item exists in the tree, but has expired. Let's assume that
-		// the caller is only interested in items that have not expired.
-		return nil, ErrNotFound
-	}
-	return item.val, nil
-}
-
-// TTL returns the remaining time-to-live for an item.
-// A negative duration will be returned for items that do not have an
-// expiration.
-func (tx *Tx) TTL(key Key) (time.Duration, error) {
-	//if tx.db == nil {
-	//	return 0, ErrTxClosed
-	//}
-	//item := tx.db.get(key)
-	//if item == nil {
-	//	return 0, ErrNotFound
-	//} else if item.opts == nil || !item.opts.ex {
-	//	return -1, nil
-	//}
-	//dur := item.opts.exat.Sub(time.Now())
-	//if dur < 0 {
-	//	return 0, ErrNotFound
-	//}
-	return 0, nil
-}
-
-// scan iterates through a specified index and calls user-defined iterator
-// function for each item encountered.
-// The desc param indicates that the iterator should descend.
-// The gt param indicates that there is a greaterThan limit.
-// The lt param indicates that there is a lessThan limit.
-// The index param tells the scanner to use the specified index tree. An
-// empty string for the index means to scan the keys, not the values.
-// The start and stop params are the greaterThan, lessThan limits. For
-// descending order, these will be lessThan, greaterThan.
-// An error will be returned if the tx is closed or the index is not found.
-func (tx *Tx) scan(desc, gt, lt bool, index string, start, stop Value,
-	iterator func(key Key, value Value) bool) error {
-	if tx.db == nil {
-		return ErrTxClosed
-	}
-	// wrap a btree specific iterator around the user-defined iterator.
-	iter := func(item btree.Item) bool {
-		dbi := item.(*DbItem)
-		return iterator(dbi.key, dbi.val)
-	}
-	var tr *btree.BTree
-	if index == "" {
-		// empty index means we will use the keys tree.
-		tr = tx.db.keys
-	} else {
-		idx := tx.db.idxs[index]
-		if idx == nil {
-			// index was not found. return error
-			return ErrNotFound
-		}
-		tr = idx.btr
-		if tr == nil {
-			return nil
-		}
-	}
-	// create some limit items
-	var itemA, itemB *DbItem
-	if gt || lt {
-		itemA = &DbItem{val: start}
-		itemB = &DbItem{val: stop}
-		//if desc {
-		//	itemA.keyless = true
-		//	itemB.keyless = true
-		//}
-
-		//if index == "" {
-		//	itemA = &DbItem{key: start}
-		//	itemB = &DbItem{key: stop}
-		//} else {
-		//
-		//}
-	}
-	// execute the scan on the underlying tree.
-	if tx.wc != nil {
-		tx.wc.itercount++
-		defer func() {
-			tx.wc.itercount--
-		}()
-	}
-	if desc {
-		if gt {
-			if lt {
-				tr.DescendRange(itemA, itemB, iter)
-			} else {
-				tr.DescendGreaterThan(itemA, iter)
-			}
-		} else if lt {
-			tr.DescendLessOrEqual(itemA, iter)
-		} else {
-			tr.Descend(iter)
-		}
-	} else {
-		if gt {
-			if lt {
-				tr.AscendRange(itemA, itemB, iter)
-			} else {
-				tr.AscendGreaterOrEqual(itemA, iter)
-			}
-		} else if lt {
-			tr.AscendLessThan(itemA, iter)
-		} else {
-			tr.Ascend(iter)
-		}
-	}
-	return nil
-}
-func (tx *Tx) scanKeys(start Key, stop Key,
-	iterator func(*DbItem) bool) error {
-	var tr *btree.BTree
-	tr = tx.db.keys
-	if tx.db == nil {
-		return ErrTxClosed
-	}
-	// wrap a btree specific iterator around the user-defined iterator.
-	iter := func(item btree.Item) bool {
-		dbi := item.(*DbItem)
-		return iterator(dbi)
-	}
-	var itemA, itemB *DbItem
-	itemA = &DbItem{key: start}
-	itemB = &DbItem{key: stop}
-	if len(stop) == 0 {
-		tr.AscendGreaterOrEqual(itemA, iter)
-	} else {
-		tr.AscendRange(itemA, itemB, iter)
-	}
-
-	return nil
-}
-
-//func (tx *Tx) FindFirstGreaterKey(start Key) string {
-//	result := ""
-//	tx.scanKeys(start, func(dbi *DbItem) bool {
-//		result = string(dbi.val)
-//		return false
-//	})
-//	return result
-//}
-
-//func (tx *Tx) newIterator(start Key) Iterator {
-//	result := &memdbIterator{}
-//
-//	tx.scanKeys(start, nil, func(dbi *DbItem) bool {
-//		result.cursor = tx.db.keys.Cursor()
-//		result.cursor.Seek(dbi)
-//		result.validated = true
-//		result.dbi = dbi
-//		return false
-//	})
-//	return result
-//}
-
-// Match returns true if the specified key matches the pattern. This is a very
-// simple pattern matcher where '*' matches on any number characters and '?'
-// matches on any one character.
-func Match(key, pattern string) bool {
-	return match.Match(key, pattern)
-}
-
-// AscendKeys allows for iterating through keys based on the specified pattern.
-//func (tx *Tx) AscendKeys(pattern string,
-//	iterator func(key Key, value string) bool) error {
-//	if pattern == "" {
-//		return nil
-//	}
-//	if pattern[0] == '*' {
-//		if pattern == "*" {
-//			return tx.Ascend("", iterator)
-//		}
-//		return tx.Ascend("", func(key, value string) bool {
-//			if match.Match(key, pattern) {
-//				if !iterator(key, value) {
-//					return false
-//				}
-//			}
-//			return true
-//		})
-//	}
-//	min, max := match.Allowable(pattern)
-//	return tx.AscendGreaterOrEqual("", min, func(key, value string) bool {
-//		if key > max {
-//			return false
-//		}
-//		if match.Match(key, pattern) {
-//			if !iterator(key, value) {
-//				return false
-//			}
-//		}
-//		return true
-//	})
-//}
-
-// DescendKeys allows for iterating through keys based on the specified pattern.
-//func (tx *Tx) DescendKeys(pattern string,
-//	iterator func(key, value string) bool) error {
-//	if pattern == "" {
-//		return nil
-//	}
-//	if pattern[0] == '*' {
-//		if pattern == "*" {
-//			return tx.Descend("", iterator)
-//		}
-//		return tx.Descend("", func(key, value string) bool {
-//			if match.Match(key, pattern) {
-//				if !iterator(key, value) {
-//					return false
-//				}
-//			}
-//			return true
-//		})
-//	}
-//	min, max := match.Allowable(pattern)
-//	return tx.DescendLessOrEqual("", max, func(key Key, value string) bool {
-//		if key < min {
-//			return false
-//		}
-//		if match.Match(key, pattern) {
-//			if !iterator(key, value) {
-//				return false
-//			}
-//		}
-//		return true
-//	})
-//}
-
-// Ascend calls the iterator for every item in the database within the range
-// [first, last], until iterator returns false.
-// When an index is provided, the results will be ordered by the item values
-// as specified by the less() function of the defined index.
-// When an index is not provided, the results will be ordered by the item key.
-// An invalid index will return an error.
-func (tx *Tx) Ascend(index string,
-	iterator func(key Key, value Value) bool) error {
-	return tx.scan(false, false, false, index, nil, nil, iterator)
-}
-
-// AscendGreaterOrEqual calls the iterator for every item in the database within
-// the range [pivot, last], until iterator returns false.
-// When an index is provided, the results will be ordered by the item values
-// as specified by the less() function of the defined index.
-// When an index is not provided, the results will be ordered by the item key.
-// An invalid index will return an error.
-func (tx *Tx) AscendGreaterOrEqual(index string, pivot Value,
-	iterator func(key Key, value Value) bool) error {
-	return tx.scan(false, true, false, index, pivot, nil, iterator)
-}
-
-// AscendLessThan calls the iterator for every item in the database within the
-// range [first, pivot), until iterator returns false.
-// When an index is provided, the results will be ordered by the item values
-// as specified by the less() function of the defined index.
-// When an index is not provided, the results will be ordered by the item key.
-// An invalid index will return an error.
-func (tx *Tx) AscendLessThan(index string, pivot Value,
-	iterator func(key Key, value Value) bool) error {
-	return tx.scan(false, false, true, index, pivot, nil, iterator)
-}
-
-// AscendRange calls the iterator for every item in the database within
-// the range [greaterOrEqual, lessThan), until iterator returns false.
-// When an index is provided, the results will be ordered by the item values
-// as specified by the less() function of the defined index.
-// When an index is not provided, the results will be ordered by the item key.
-// An invalid index will return an error.
-func (tx *Tx) AscendRange(index string, greaterOrEqual, lessThan Value,
-	iterator func(key Key, value Value) bool) error {
-	return tx.scan(
-		false, true, true, index, greaterOrEqual, lessThan, iterator,
-	)
-}
-
-// Descend calls the iterator for every item in the database within the range
-// [last, first], until iterator returns false.
-// When an index is provided, the results will be ordered by the item values
-// as specified by the less() function of the defined index.
-// When an index is not provided, the results will be ordered by the item key.
-// An invalid index will return an error.
-func (tx *Tx) Descend(index string,
-	iterator func(key Key, value Value) bool) error {
-	return tx.scan(true, false, false, index, nil, nil, iterator)
-}
-
-// DescendGreaterThan calls the iterator for every item in the database within
-// the range [last, pivot), until iterator returns false.
-// When an index is provided, the results will be ordered by the item values
-// as specified by the less() function of the defined index.
-// When an index is not provided, the results will be ordered by the item key.
-// An invalid index will return an error.
-func (tx *Tx) DescendGreaterThan(index string, pivot Value,
-	iterator func(key Key, value Value) bool) error {
-	return tx.scan(true, true, false, index, pivot, nil, iterator)
-}
-
-// DescendLessOrEqual calls the iterator for every item in the database within
-// the range [pivot, first], until iterator returns false.
-// When an index is provided, the results will be ordered by the item values
-// as specified by the less() function of the defined index.
-// When an index is not provided, the results will be ordered by the item key.
-// An invalid index will return an error.
-//func (tx *Tx) DescendLessOrEqual(index, pivot string,
-//	iterator func(key Key, value string) bool) error {
-//	return tx.scan(true, false, true, index, pivot, "", iterator)
-//}
-
-// DescendRange calls the iterator for every item in the database within
-// the range [lessOrEqual, greaterThan), until iterator returns false.
-// When an index is provided, the results will be ordered by the item values
-// as specified by the less() function of the defined index.
-// When an index is not provided, the results will be ordered by the item key.
-// An invalid index will return an error.
-//func (tx *Tx) DescendRange(index, lessOrEqual, greaterThan string,
-//	iterator func(key Key, value string) bool) error {
-//	return tx.scan(
-//		true, true, true, index, lessOrEqual, greaterThan, iterator,
-//	)
-//}
-
-// AscendEqual calls the iterator for every item in the database that equals
-// pivot, until iterator returns false.
-// When an index is provided, the results will be ordered by the item values
-// as specified by the less() function of the defined index.
-// When an index is not provided, the results will be ordered by the item key.
-// An invalid index will return an error.
-func (tx *Tx) AscendEqual(index string, pivot Value,
-	iterator func(key Key, value Value) bool) error {
-	var err error
-	var less func(a, b Value) bool
-	if index != "" {
-		less, err = tx.GetLess(index)
-		if err != nil {
-			return err
-		}
-	}
-	return tx.AscendGreaterOrEqual(index, pivot, func(key Key, value Value) bool {
-		if less(pivot, value) {
-			return false
-		}
-		return iterator(key, value)
-	})
-}
-
-// DescendEqual calls the iterator for every item in the database that equals
-// pivot, until iterator returns false.
-// When an index is provided, the results will be ordered by the item values
-// as specified by the less() function of the defined index.
-// When an index is not provided, the results will be ordered by the item key.
-// An invalid index will return an error.
-//func (tx *Tx) DescendEqual(index, pivot string,
-//	iterator func(key Key, value string) bool) error {
-//	var err error
-//	var less func(a, b string) bool
-//	if index != "" {
-//		less, err = tx.GetLess(index)
-//		if err != nil {
-//			return err
-//		}
-//	}
-//	return tx.DescendLessOrEqual(index, pivot, func(key Key, value string) bool {
-//	 if less(value, pivot) {
-//			return false
-//		}
-//		return iterator(key, value)
-//	})
-//}
-
-// rect is used by Intersects and Nearby
-type rect struct {
-	min, max []float64
-}
-
-func (r *rect) Rect(ctx interface{}) (min, max []float64) {
-	return r.min, r.max
-}
-
-// Nearby searches for rectangle items that are nearby a target rect.
-// All items belonging to the specified index will be returned in order of
-// nearest to farthest.
-// The specified index must have been created by AddIndex() and the target
-// is represented by the rect string. This string will be processed by the
-// same bounds function that was passed to the CreateSpatialIndex() function.
-// An invalid index will return an error.
-// The dist param is the distance of the bounding boxes. In the case of
-// simple 2D points, it's the distance of the two 2D points squared.
-//func (tx *Tx) Nearby(index, bounds string,
-//	iterator func(key, value string, dist float64) bool) error {
-//	if tx.db == nil {
-//		return ErrTxClosed
-//	}
-//	if index == "" {
-//		// cannot search on keys tree. just return nil.
-//		return nil
-//	}
-//	// // wrap a rtree specific iterator around the user-defined iterator.
-//	iter := func(item rtree.Item, dist float64) bool {
-//		dbi := item.(*DbItem)
-//		return iterator(dbi.key, dbi.val, dist)
-//	}
-//	idx := tx.db.idxs[index]
-//	if idx == nil {
-//		// index was not found. return error
-//		return ErrNotFound
-//	}
-//	if idx.rtr == nil {
-//		// not an r-tree index. just return nil
-//		return nil
-//	}
-//	// execute the nearby search
-//	var min, max []float64
-//	if idx.rect != nil {
-//		min, max = idx.rect(bounds)
-//	}
-//	// set the center param to false, which uses the box dist calc.
-//	idx.rtr.KNN(&rect{min, max}, false, iter)
-//	return nil
-//}
-
-// Intersects searches for rectangle items that intersect a target rect.
-// The specified index must have been created by AddIndex() and the target
-// is represented by the rect string. This string will be processed by the
-// same bounds function that was passed to the CreateSpatialIndex() function.
-// An invalid index will return an error.
-//func (tx *Tx) Intersects(index, bounds string,
-//	iterator func(key, value string) bool) error {
-//	if tx.db == nil {
-//		return ErrTxClosed
-//	}
-//	if index == "" {
-//		// cannot search on keys tree. just return nil.
-//		return nil
-//	}
-//	// wrap a rtree specific iterator around the user-defined iterator.
-//	iter := func(item rtree.Item) bool {
-//		dbi := item.(*DbItem)
-//		return iterator(dbi.key, dbi.val)
-//	}
-//	idx := tx.db.idxs[index]
-//	if idx == nil {
-//		// index was not found. return error
-//		return ErrNotFound
-//	}
-//	if idx.rtr == nil {
-//		// not an r-tree index. just return nil
-//		return nil
-//	}
-//	// execute the search
-//	var min, max []float64
-//	if idx.rect != nil {
-//		min, max = idx.rect(bounds)
-//	}
-//	idx.rtr.Search(&rect{min, max}, iter)
-//	return nil
-//}
 
 // Len returns the number of items in the database
 func (tx *Tx) Len() (int, error) {
@@ -2061,300 +1158,49 @@ func (tx *Tx) Len() (int, error) {
 	return tx.db.keys.Len(), nil
 }
 
-// IndexOptions provides an index with additional features or
-// alternate functionality.
-type IndexOptions struct {
-	// CaseInsensitiveKeyMatching allow for case-insensitive
-	// matching on keys when setting key/values.
-	CaseInsensitiveKeyMatching bool
-}
-
-// CreateIndex builds a new index and populates it with items.
-// The items are ordered in an b-tree and can be retrieved using the
-// Ascend* and Descend* methods.
-// An error will occur if an index with the same name already exists.
-//
-// When a pattern is provided, the index will be populated with
-// keys that match the specified pattern. This is a very simple pattern
-// match where '*' matches on any number characters and '?' matches on
-// any one character.
-// The less function compares if string 'a' is less than string 'b'.
-// It allows for indexes to create custom ordering. It's possible
-// that the strings may be textual or binary. It's up to the provided
-// less function to handle the content format and comparison.
-// There are some default less function that can be used such as
-// IndexString, IndexBinary, etc.
-func (tx *Tx) CreateIndex(name, pattern string,
-	less ...func(a, b Value) bool) error {
-	return tx.createIndex(name, pattern, less, nil, nil)
-}
-
-// CreateIndexOptions is the same as CreateIndex except that it allows
-// for additional options.
-func (tx *Tx) CreateIndexOptions(name, pattern string,
-	opts *IndexOptions,
-	less ...func(a, b Value) bool) error {
-	return tx.createIndex(name, pattern, less, nil, opts)
-}
-
-// CreateSpatialIndex builds a new index and populates it with items.
-// The items are organized in an r-tree and can be retrieved using the
-// Intersects method.
-// An error will occur if an index with the same name already exists.
-//
-// The rect function converts a string to a rectangle. The rectangle is
-// represented by two arrays, min and max. Both arrays may have a length
-// between 1 and 20, and both arrays must match in length. A length of 1 is a
-// one dimensional rectangle, and a length of 4 is a four dimension rectangle.
-// There is support for up to 20 dimensions.
-// The values of min must be less than the values of max at the same dimension.
-// Thus min[0] must be less-than-or-equal-to max[0].
-// The IndexRect is a default function that can be used for the rect
-// parameter.
-func (tx *Tx) CreateSpatialIndex(name, pattern string,
-	rect func(item string) (min, max []float64)) error {
-	return tx.createIndex(name, pattern, nil, rect, nil)
-}
-
-// CreateSpatialIndexOptions is the same as CreateSpatialIndex except that
-// it allows for additional options.
-func (tx *Tx) CreateSpatialIndexOptions(name, pattern string,
-	opts *IndexOptions,
-	rect func(item string) (min, max []float64)) error {
-	return tx.createIndex(name, pattern, nil, rect, nil)
-}
-
-// createIndex is called by CreateIndex() and CreateSpatialIndex()
-func (tx *Tx) createIndex(name string, pattern string,
-	lessers []func(a, b Value) bool,
-	rect func(item string) (min, max []float64),
-	opts *IndexOptions,
-) error {
-	if tx.db == nil {
-		return ErrTxClosed
-	} else if !tx.writable {
-		return ErrTxNotWritable
-	} else if tx.wc.itercount > 0 {
-		return ErrTxIterating
-	}
-	if name == "" {
-		// cannot create an index without a name.
-		// an empty name index is designated for the main "keys" tree.
-		return ErrIndexExists
-	}
-	// check if an index with that name already exists.
-	if _, ok := tx.db.idxs[name]; ok {
-		// index with name already exists. error.
-		return ErrIndexExists
-	}
-	// genreate a less function
-	var less func(a, b Value) bool
-	switch len(lessers) {
-	default:
-		// multiple less functions specified.
-		// create a compound less function.
-		less = func(a, b Value) bool {
-			for i := 0; i < len(lessers)-1; i++ {
-				if lessers[i](a, b) {
-					return true
-				}
-				if lessers[i](b, a) {
-					return false
-				}
-			}
-			return lessers[len(lessers)-1](a, b)
-		}
-	case 0:
-		// no less function
-	case 1:
-		less = lessers[0]
-	}
-	var sopts IndexOptions
-	if opts != nil {
-		sopts = *opts
-	}
-	if sopts.CaseInsensitiveKeyMatching {
-		pattern = strings.ToLower(pattern)
-	}
-	// intialize new index
-	idx := &index{
-		name:    name,
-		pattern: pattern,
-		less:    less,
-		rect:    rect,
-		db:      tx.db,
-		opts:    sopts,
-	}
-	idx.rebuild()
-	// save the index
-	tx.db.idxs[name] = idx
-	if tx.wc.rbkeys == nil {
-		// store the index in the rollback map.
-		if _, ok := tx.wc.rollbackIndexes[name]; !ok {
-			// we use nil to indicate that the index should be removed upon rollback.
-			tx.wc.rollbackIndexes[name] = nil
-		}
-	}
-	return nil
-}
-
-// DropIndex removes an index.
-func (tx *Tx) DropIndex(name string) error {
-	if tx.db == nil {
-		return ErrTxClosed
-	} else if !tx.writable {
-		return ErrTxNotWritable
-	} else if tx.wc.itercount > 0 {
-		return ErrTxIterating
-	}
-	if name == "" {
-		// cannot drop the default "keys" index
-		return ErrInvalidOperation
-	}
-	idx, ok := tx.db.idxs[name]
-	if !ok {
-		return ErrNotFound
-	}
-	// delete from the map.
-	// this is all that is needed to delete an index.
-	delete(tx.db.idxs, name)
-	if tx.wc.rbkeys == nil {
-		// store the index in the rollback map.
-		if _, ok := tx.wc.rollbackIndexes[name]; !ok {
-			// we use a non-nil copy of the index without the data to indicate that the
-			// index should be rebuilt upon rollback.
-			tx.wc.rollbackIndexes[name] = idx.clearCopy()
-		}
-	}
-	return nil
-}
-
-// Indexes returns a list of index names.
-func (tx *Tx) Indexes() ([]string, error) {
-	if tx.db == nil {
-		return nil, ErrTxClosed
-	}
-	names := make([]string, 0, len(tx.db.idxs))
-	for name := range tx.db.idxs {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	return names, nil
-}
-
-// Rect is helper function that returns a string representation
-// of a rect. IndexRect() is the reverse function and can be used
-// to generate a rect from a string.
-func Rect(min, max []float64) string {
-	r := grect.Rect{Min: min, Max: max}
-	return r.String()
-}
-
-// Point is a helper function that converts a series of float64s
-// to a rectangle for a spatial index.
-func Point(coords ...float64) string {
-	return Rect(coords, coords)
-}
-
-// IndexRect is a helper function that converts string to a rect.
-// Rect() is the reverse function and can be used to generate a string
-// from a rect.
-func IndexRect(a string) (min, max []float64) {
-	r := grect.Get(a)
-	return r.Min, r.Max
-}
-
-// IndexString is a helper function that return true if 'a' is less than 'b'.
-// This is a case-insensitive comparison. Use the IndexBinary() for comparing
-// case-sensitive strings.
-func IndexString(a, b string) bool {
-	for i := 0; i < len(a) && i < len(b); i++ {
-		if a[i] >= 'A' && a[i] <= 'Z' {
-			if b[i] >= 'A' && b[i] <= 'Z' {
-				// both are uppercase, do nothing
-				if a[i] < b[i] {
-					return true
-				} else if a[i] > b[i] {
-					return false
-				}
-			} else {
-				// a is uppercase, convert a to lowercase
-				if a[i]+32 < b[i] {
-					return true
-				} else if a[i]+32 > b[i] {
-					return false
-				}
-			}
-		} else if b[i] >= 'A' && b[i] <= 'Z' {
-			// b is uppercase, convert b to lowercase
-			if a[i] < b[i]+32 {
-				return true
-			} else if a[i] > b[i]+32 {
-				return false
-			}
-		} else {
-			// neither are uppercase
-			if a[i] < b[i] {
-				return true
-			} else if a[i] > b[i] {
-				return false
-			}
-		}
-	}
-	return len(a) < len(b)
-}
-
 // IndexBinary is a helper function that returns true if 'a' is less than 'b'.
 // This compares the raw binary of the string.
-func IndexBinary(a, b string) bool {
-	return a < b
-}
 
-// IndexInt is a helper function that returns true if 'a' is less than 'b'.
-func IndexInt(a, b string) bool {
-	ia, _ := strconv.ParseInt(a, 10, 64)
-	ib, _ := strconv.ParseInt(b, 10, 64)
-	return ia < ib
-}
-
-// IndexUint is a helper function that returns true if 'a' is less than 'b'.
-// This compares uint64s that are added to the database using the
-// Uint() conversion function.
-func IndexUint(a, b string) bool {
-	ia, _ := strconv.ParseUint(a, 10, 64)
-	ib, _ := strconv.ParseUint(b, 10, 64)
-	return ia < ib
-}
-
-// IndexFloat is a helper function that returns true if 'a' is less than 'b'.
-// This compares float64s that are added to the database using the
-// Float() conversion function.
-func IndexFloat(a, b string) bool {
-	ia, _ := strconv.ParseFloat(a, 64)
-	ib, _ := strconv.ParseFloat(b, 64)
-	return ia < ib
-}
-
-// IndexJSON provides for the ability to create an index on any JSON field.
-// When the field is a string, the comparison will be case-insensitive.
-// It returns a helper function used by CreateIndex.
-func IndexJSON(path string) func(a, b string) bool {
-	return func(a, b string) bool {
-		return gjson.Get(a, path).Less(gjson.Get(b, path), false)
+func IndexKey(a, b *DBItem) bool {
+	result := bytes.Compare(a.Key, b.Key)
+	if result < 0 {
+		return true
 	}
+	return false
 }
-
-// IndexJSONCaseSensitive provides for the ability to create an index on
-// any JSON field.
-// When the field is a string, the comparison will be case-sensitive.
-// It returns a helper function used by CreateIndex.
-func IndexJSONCaseSensitive(path string) func(a, b string) bool {
-	return func(a, b string) bool {
-		return gjson.Get(a, path).Less(gjson.Get(b, path), true)
+func IndexRawKey(a, b *DBItem) bool {
+	result := bytes.Compare(a.RawKey, b.RawKey)
+	if result < 0 {
+		return true
 	}
+	return false
 }
 
-// Desc is a helper function that changes the order of an index.
-func Desc(less func(a, b string) bool) func(a, b string) bool {
-	return func(a, b string) bool { return less(b, a) }
+func IndexRawKeyLen(a, b *DBItem) bool {
+	if len(a.RawKey) < len(b.RawKey) {
+		return true
+	}
+	return false
+}
+
+func IndexStartTS(a, b *DBItem) bool {
+	if a.StartTS < b.StartTS {
+		return true
+	}
+	return false
+}
+
+func IndexCommitTS(a, b *DBItem) bool {
+	if a.CommitTS < b.CommitTS {
+		return true
+	}
+	return false
+}
+
+func IndexRawKeyAndCommitTS(a, b *DBItem) bool {
+	result := bytes.Compare(a.RawKey, b.RawKey)
+	if result < 0 && a.CommitTS < b.CommitTS {
+		return true
+	}
+	return false
 }

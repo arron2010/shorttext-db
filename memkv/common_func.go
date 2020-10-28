@@ -10,11 +10,11 @@ import (
 )
 
 var once sync.Once
-var emptyItems *proto.DbItems
+var emptyItems *proto.DBItems
 
 func initialize(db MemDB) {
 	once.Do(func() {
-		emptyItems = &proto.DbItems{Items: make([]*proto.DbItem, 0, 0)}
+		emptyItems = &proto.DBItems{Items: make([]*proto.DBItem, 0, 0)}
 		//加载序列化与反序列化处理器
 		store.GetInstance().MessageEncoder = &task.MessageEncoder{NewMsgSerializer()}
 
@@ -24,4 +24,27 @@ func initialize(db MemDB) {
 		easymr.Set(constants.REDUCER, NewMemKVReducer(), "MemKVReducer")
 	})
 
+}
+
+func createDBItem(dbItem *proto.DBItem) *DBItem {
+	return &DBItem{Key: dbItem.Key,
+		Val:      dbItem.Value,
+		StartTS:  dbItem.StartTS,
+		CommitTS: dbItem.CommitTS}
+}
+
+func createProtoDBItem(dbItem *DBItem) *proto.DBItem {
+	return &proto.DBItem{Key: dbItem.Key,
+		Value:    dbItem.Val,
+		StartTS:  dbItem.StartTS,
+		CommitTS: dbItem.CommitTS}
+}
+func createProtoDBItems(items []*DBItem) *proto.DBItems {
+	protoItems := &proto.DBItems{}
+	protoItems.Items = make([]*proto.DBItem, 0, len(items))
+	l := len(items)
+	for i := 0; i < l; i++ {
+		protoItems.Items = append(protoItems.Items, createProtoDBItem(items[i]))
+	}
+	return protoItems
 }

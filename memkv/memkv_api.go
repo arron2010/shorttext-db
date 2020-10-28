@@ -6,6 +6,7 @@ import (
 	"github.com/xp/shorttext-db/memkv/proto"
 )
 
+type ValidateFunc func(val *DBItem) bool
 type Key []byte
 type Value []byte
 
@@ -28,7 +29,7 @@ type Batch struct {
 }
 
 type batchItem struct {
-	dbItem *proto.DbItem
+	dbItem *proto.DBItem
 	ts     uint64
 }
 
@@ -44,53 +45,60 @@ func (b *Batch) Put(key Key, val Value, ts uint64) {
 		return
 	}
 	//writeKey := mvccEncode(key, ts)
-	b.addedBuf = append(b.addedBuf, batchItem{dbItem: &proto.DbItem{Key: key, Value: val}, ts: ts})
+	b.addedBuf = append(b.addedBuf, batchItem{dbItem: &proto.DBItem{Key: key, Value: val}, ts: ts})
 }
 func (b *Batch) Delete(key Key, ts uint64) {
 	if len(key) == 0 {
 		return
 	}
-	b.deletedBuf = append(b.deletedBuf, batchItem{dbItem: &proto.DbItem{Key: key, Value: nil}, ts: ts})
+	b.deletedBuf = append(b.deletedBuf, batchItem{dbItem: &proto.DBItem{Key: key, Value: nil}, ts: ts})
 }
 
-func NewDbItems() *proto.DbItems {
-	instance := &proto.DbItems{}
-	instance.Items = make([]*proto.DbItem, 0, 4)
+func NewDbItems() *proto.DBItems {
+	instance := &proto.DBItems{}
+	instance.Items = make([]*proto.DBItem, 0, 4)
 	return instance
 }
 
-type DbItems []*DbItem
+type DBItems []*DBItem
 
 /*
 数据接口
 */
 type MemDB interface {
-	Put(item *proto.DbItem) (err error)
-	Get(key Key) (val *proto.DbItem)
+	Put(item *DBItem) (err error)
+	Get(key Key) (val *DBItem)
 	Delete(key Key) (err error)
 	//NewIterator(start Key) (iter Iterator)
-	//Find(key Key) *proto.DbItems
-	Scan(startKey Key, endKey Key) *proto.DbItems
-	RecordCount() int
+	//Find(key Key) *proto.DBItems
+	Ascend(index string,
+		iterator func(key Key, value *DBItem) bool) error
+	CreateIndex(name, pattern string,
+		less ...func(a, b *DBItem) bool) error
+	AscendRange(index string, greaterOrEqual, lessThan *DBItem,
+		iterator func(key Key, value *DBItem) bool) error
+	DescendRange(index string, greaterOrEqual, lessThan *DBItem,
+		iterator func(key Key, value *DBItem) bool) error
+	AscendGreaterOrEqual(index string, pivot *DBItem,
+		iterator func(key Key, value *DBItem) bool) error
 	LoadDB() error
 	PersistDB() error
 	SetId(id uint32)
-	//Range(start,stop Key)[]*DbItem
+	//Range(start,stop Key)[]*DBItem
 	Close() error
 }
 
 type KVClient interface {
-	//Put(item *DbItem) (err error)
-	//Get(key Key) (val *DbItem)
-	NewIterator(start []byte) Iterator
-	NewScanIterator(startKey []byte, endKey []byte, locked bool, desc bool) Iterator
-	NewDescendIterator(startKey []byte, endKey []byte) Iterator
-	Write(batch *Batch) error
-	Put(key []byte, val []byte, ts uint64, locked bool) (err error)
-	Get(key []byte, ts uint64) (val []byte, validated bool)
-	Delete(key []byte, ts uint64, locked bool) (err error)
+	//Put(item *DBItem) (err error)
+	//Get(key Key) (val *DBItem)
+	FindByKey(finding Key, locked bool) []*DBItem
+	Scan(startKey Key, endKey Key, ts uint64, limit int, desc bool, validate ValidateFunc) []*DBItem
+	GetByRawKey(key []byte, ts uint64) (result *DBItem, validated bool)
+	Put(item *DBItem) (err error)
+	Get(key []byte, ts uint64) (item *DBItem, validated bool)
+	Delete(key []byte, ts uint64) (err error)
 	Close() error
-	GetValues(key []byte) *proto.DbItems
+	//GetValues(key []byte) *proto.DBItems
 }
 
 /*

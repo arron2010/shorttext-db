@@ -1,7 +1,5 @@
 package memkv
 
-import "github.com/xp/shorttext-db/memkv/proto"
-
 type DBProxy struct {
 	local  KVClient
 	remote KVClient
@@ -26,118 +24,109 @@ func (d *DBProxy) Close() error {
 	return err
 }
 
-func (d *DBProxy) NewIterator(key []byte) Iterator {
-
-	if len(key) == 0 {
-		return NewEmptytIterator()
-	}
-
-	client := d.choose(key, false)
-	iter := client.NewIterator(key)
-	return iter
+func (d *DBProxy) GetByRawKey(key []byte, ts uint64) (result *DBItem, validated bool) {
+	db := d.choose(key, ts)
+	return db.GetByRawKey(key, ts)
 }
-func (d *DBProxy) GetValues(key []byte) *proto.DbItems {
-	if len(key) == 0 {
-		return emptyItems
-	}
-
-	return d.local.GetValues(key)
-}
-func (d *DBProxy) NewScanIterator(startKey []byte, endKey []byte, locked bool, desc bool) Iterator {
-	if len(startKey) == 0 {
-		return NewEmptytIterator()
-	}
-	client := d.choose(startKey, locked)
-	var iter Iterator
-	if !desc {
-		iter = client.NewScanIterator(startKey, endKey, locked, desc)
-	} else {
-		iter = client.NewDescendIterator(startKey, endKey)
-	}
-	return iter
+func (d *DBProxy) Scan(startKey Key, endKey Key, ts uint64, limit int, desc bool, validate ValidateFunc) []*DBItem {
+	db := d.choose(startKey, ts)
+	return db.Scan(startKey, endKey, ts, limit, desc, validate)
 }
 
-func (d *DBProxy) NewDescendIterator(startKey []byte, endKey []byte) Iterator {
-	if len(startKey) == 0 {
-		return NewEmptytIterator()
+func (d *DBProxy) FindByKey(finding Key, locked bool) []*DBItem {
+	db := d.local
+	if locked {
+		db = d.buffer
 	}
-	client := d.choose(startKey, false)
-	iter := client.NewDescendIterator(startKey, endKey)
-	return iter
+	return db.FindByKey(finding, locked)
 }
 
-func (d *DBProxy) Write(batch *Batch) error {
-	var err error
-	//for _, added := range batch.addedBuf {
-	//	err = d.Put(added.dbItem, added.ts)
-	//	if err != nil {
-	//		return err
-	//	}
+func (d *DBProxy) Put(item *DBItem) (err error) {
+	if len(item.RawKey) == 0 {
+		return nil
+	}
+	db := d.choose(item.RawKey, item.CommitTS)
+	//client := d.choose(key, locked)
+	//if locked {
+	//	d.Locks[ts] = 1 + d.Locks[ts]
+	//	//if d.Locks[ts] > 1{
+	//	//	xhelper.Print("DBProxy----------->",ts)
+	//	//}
+	//	ts = lockVer
 	//}
-	//for _, deleted := range batch.deletedBuf {
-	//	err = d.Delete(deleted.dbItem, deleted.ts)
-	//	if err != nil {
-	//		return err
-	//	}
-	//}
+	err = db.Put(item)
 	return err
 }
 
-func (d *DBProxy) Put(key []byte, val []byte, ts uint64, locked bool) (err error) {
+func (d *DBProxy) Delete(key []byte, ts uint64) (err error) {
 
-	client := d.choose(key, locked)
-	if locked {
-		d.Locks[ts] = 1 + d.Locks[ts]
-		//if d.Locks[ts] > 1{
-		//	xhelper.Print("DBProxy----------->",ts)
-		//}
-		ts = lockVer
-	}
-	err = client.Put(key, val, ts, locked)
-	return err
-}
+	client := d.choose(key, ts)
 
-func (d *DBProxy) Delete(key []byte, ts uint64, locked bool) (err error) {
-
-	client := d.choose(key, locked)
-	if locked {
-		v, ok := d.Locks[ts]
-		if !ok {
-			d.Locks[ts] = 99
-		} else {
-			d.Locks[ts] = v - 1
-		}
-		ts = lockVer
-	}
 	//v1,_ := client.Get(key,ts)
 	//fmt.Println(len(v1))
-	err = client.Delete(key, ts, locked)
+	err = client.Delete(key, ts)
 	//v2,_ := client.Get(key,ts)
 	//fmt.Println(len(v2))
 	return err
 }
 
-func (d *DBProxy) Get(key []byte, ts uint64) ([]byte, bool) {
-	client := d.choose(key, d.isLocked(ts))
+func (d *DBProxy) Get(key []byte, ts uint64) (*DBItem, bool) {
+	client := d.choose(key, ts)
 
 	return client.Get(key, ts)
 }
-func (d *DBProxy) isLocked(ts uint64) bool {
-	if ts == lockVer {
-		return true
-	}
-	return false
 
-}
-func (d *DBProxy) choose(key []byte, locked bool) KVClient {
-	if locked {
+//func (d *DBProxy) isLocked(ts uint64) bool {
+//	if ts == lockVer {
+//		return true
+//	}
+//	return false
+//
+//}
+func (d *DBProxy) choose(key []byte, ts uint64) KVClient {
+	if ts == lockVer {
 		return d.buffer
+	} else {
+		return d.local
 	}
-	return d.local
-	//prefix := string(key[0])
-	//if prefix == "m" {
-	//	return d.local
-	//} else {
-	//	return d.remote
-	//}
 }
+
+//func (d *DBProxy) NewIterator(key []byte) Iterator {
+//
+//	if len(key) == 0 {
+//		return NewEmptytIterator()
+//	}
+//
+//	client := d.choose(key, false)
+//	iter := client.NewIterator(key)
+//	return iter
+//}
+//func (d *DBProxy) GetValues(key []byte) *proto.DBItems {
+//	if len(key) == 0 {
+//		return emptyItems
+//	}
+//
+//	return d.local.GetValues(key)
+//}
+//func (d *DBProxy) NewScanIterator(startKey []byte, endKey []byte, locked bool, desc bool) Iterator {
+//	if len(startKey) == 0 {
+//		return NewEmptytIterator()
+//	}
+//	client := d.choose(startKey, locked)
+//	var iter Iterator
+//	if !desc {
+//		iter = client.NewScanIterator(startKey, endKey, locked, desc)
+//	} else {
+//		iter = client.NewDescendIterator(startKey, endKey)
+//	}
+//	return iter
+//}
+//
+//func (d *DBProxy) NewDescendIterator(startKey []byte, endKey []byte) Iterator {
+//	if len(startKey) == 0 {
+//		return NewEmptytIterator()
+//	}
+//	client := d.choose(startKey, false)
+//	iter := client.NewDescendIterator(startKey, endKey)
+//	return iter
+//}
