@@ -36,7 +36,7 @@ type LocalDBProxy struct {
 	readCount uint64
 }
 
-func NewLocalDBProxy() *LocalDBProxy {
+func NewLocalDBProxy(id uint32) *LocalDBProxy {
 	var err error
 	l := &LocalDBProxy{}
 	l.db, err = Open(":memory:")
@@ -47,7 +47,7 @@ func NewLocalDBProxy() *LocalDBProxy {
 	if err != nil {
 		panic(err)
 	}
-	l.db.SetId(0)
+	l.db.SetId(id)
 
 	return l
 }

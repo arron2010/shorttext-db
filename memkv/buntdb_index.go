@@ -3,14 +3,14 @@ package memkv
 import (
 	"github.com/tidwall/match"
 	"github.com/tidwall/rtree"
-	"github.com/xp/shorttext-db/btree"
+
 	"strings"
 )
 
 // index represents a b-tree or r-tree index and also acts as the
 // b-tree/r-tree context for itself.
 type index struct {
-	btr     *btree.BTree                           // contains the items
+	btr     *BTree                                 // contains the items
 	rtr     *rtree.RTree                           // contains the items
 	name    string                                 // name of the index
 	pattern string                                 // a required key pattern
@@ -49,7 +49,7 @@ func (idx *index) clearCopy() *index {
 	}
 	// initialize with empty trees
 	if nidx.less != nil {
-		nidx.btr = btree.New(btreeDegrees, nidx)
+		nidx.btr = New(btreeDegrees, nidx)
 	}
 	if nidx.rect != nil {
 		nidx.rtr = rtree.New(nidx)
@@ -61,14 +61,14 @@ func (idx *index) clearCopy() *index {
 func (idx *index) rebuild() {
 	// initialize trees
 	if idx.less != nil {
-		idx.btr = btree.New(btreeDegrees, idx)
+		idx.btr = New(btreeDegrees, idx)
 	}
 	if idx.rect != nil {
 		idx.rtr = rtree.New(idx)
 	}
 	// iterate through all keys and fill the index
-	idx.db.keys.Ascend(func(item btree.Item) bool {
-		dbi := item.(*DBItem)
+	idx.db.keys.Ascend(func(item *DBItem) bool {
+		dbi := item
 		//if !idx.match(dbi.key) {
 		//	// does not match the pattern, continue
 		//	return true

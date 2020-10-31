@@ -4,7 +4,8 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
-	"github.com/xp/shorttext-db/memkv/proto"
+	"fmt"
+	"github.com/xp/shorttext-db/utils"
 	"io"
 	"math"
 	"os"
@@ -12,8 +13,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/xp/shorttext-db/btree"
 )
 
 var (
@@ -60,8 +59,8 @@ type DB struct {
 	mu        sync.RWMutex      // the gatekeeper for all fields
 	file      *os.File          // the underlying file
 	buf       []byte            // a buffer to write to
-	keys      *btree.BTree      // a tree of all item ordered by key
-	exps      *btree.BTree      // a tree of items ordered by expiration
+	keys      *BTree            // a tree of all item ordered by key
+	exps      *BTree            // a tree of items ordered by expiration
 	idxs      map[string]*index // the index trees.
 	exmgr     bool              // indicates that expires manager is running.
 	flushes   int               // a count of the number of disk flushes
@@ -72,19 +71,6 @@ type DB struct {
 	lastaofsz int               // the size of the last shrink aof size
 	id        uint32            //数据库标识
 
-}
-type DBItem struct {
-	Key         Key
-	RawKey      Key
-	Val         Value
-	ValueType   uint32
-	StartTS     uint64
-	CommitTS    uint64
-	Op          uint32
-	Ttl         uint64
-	ForUpdateTS uint64
-	TxnSize     uint64
-	MinCommitTS uint64
 }
 
 // SyncPolicy represents how often data is synced to disk.
@@ -151,8 +137,8 @@ const btreeDegrees = 32
 func Open(path string) (*DB, error) {
 	db := &DB{}
 	// initialize trees and indexes
-	db.keys = btree.New(btreeDegrees, nil)
-	db.exps = btree.New(btreeDegrees, &exctx{db})
+	db.keys = New(btreeDegrees, nil)
+	db.exps = New(btreeDegrees, &exctx{db})
 	db.idxs = make(map[string]*index)
 	// initialize default configuration
 	db.config = Config{
@@ -213,8 +199,8 @@ func (db *DB) Save(wr io.Writer) error {
 	// use a buffered writer and flush every 4MB
 	var buf []byte
 	// iterated through every item in the database and write to the buffer
-	db.keys.Ascend(func(item btree.Item) bool {
-		dbi := item.(*DBItem)
+	db.keys.Ascend(func(item *DBItem) bool {
+		dbi := item
 		buf = dbi.writeSetTo(buf)
 		if len(buf) > 1024*1024*4 {
 			// flush when buffer is over 4MB
@@ -357,7 +343,7 @@ func (db *DB) insertIntoDatabase(item *DBItem) *DBItem {
 	if prev != nil {
 		// A previous item was removed from the keys tree. Let's
 		// fully delete this item from all indexes.
-		pdbi = prev.(*DBItem)
+		pdbi = prev
 		//if pdbi.opts != nil && pdbi.opts.ex {
 		//	// Remove it from the exipres tree.
 		//	db.exps.Delete(pdbi)
@@ -384,6 +370,8 @@ func (db *DB) insertIntoDatabase(item *DBItem) *DBItem {
 		//}
 		if idx.btr != nil {
 			// Add new item to btree index.
+			//var treeItem *DBItem
+			//treeItem = *DBItem(item)
 			idx.btr.ReplaceOrInsert(item)
 		}
 		//if idx.rtr != nil {
@@ -405,7 +393,7 @@ func (db *DB) deleteFromDatabase(item *DBItem) *DBItem {
 	var pdbi *DBItem
 	prev := db.keys.Delete(item)
 	if prev != nil {
-		pdbi = prev.(*DBItem)
+		pdbi = prev
 		//if pdbi.opts != nil && pdbi.opts.ex {
 		//	// Remove it from the exipres tree.
 		//	db.exps.Delete(pdbi)
@@ -456,7 +444,7 @@ func (db *DB) backgroundManager() {
 			// produce a list of expired items that need removing
 			//db.exps.AscendLessThan(&DBItem{
 			//	opts: &dbItemOpts{ex: true, exat: time.Now()},
-			//}, func(item btree.Item) bool {
+			//}, func(item btree.*DBItem) bool {
 			//	expired = append(expired, item.(*DBItem))
 			//	return true
 			//})
@@ -572,8 +560,8 @@ func (db *DB) Shrink() error {
 			done = true
 			var n int
 			db.keys.AscendGreaterOrEqual(&DBItem{Key: pivot},
-				func(item btree.Item) bool {
-					dbi := item.(*DBItem)
+				func(item *DBItem) bool {
+					dbi := item
 					// 1000 items or 64MB buffer
 					if n > 1000 || len(buf) > 64*1024*1024 {
 						pivot = dbi.Key
@@ -788,8 +776,8 @@ func (db *DB) readLoad(rd io.Reader, modTime time.Time) error {
 			db.deleteFromDatabase(&DBItem{Key: []byte(parts[1])})
 		} else if (parts[0][0] == 'f' || parts[0][0] == 'F') &&
 			strings.ToLower(parts[0]) == "flushdb" {
-			db.keys = btree.New(btreeDegrees, nil)
-			db.exps = btree.New(btreeDegrees, &exctx{db})
+			db.keys = New(btreeDegrees, nil)
+			db.exps = New(btreeDegrees, &exctx{db})
 			db.idxs = make(map[string]*index)
 		} else {
 			return ErrInvalid
@@ -819,6 +807,8 @@ func (db *DB) load() error {
 	return nil
 }
 func (db *DB) Put(item *DBItem) (err error) {
+	db.mu.Lock()
+	defer db.mu.Unlock()
 	tx := &Tx{
 		db: db, writable: true,
 	}
@@ -826,6 +816,8 @@ func (db *DB) Put(item *DBItem) (err error) {
 	return err
 }
 func (db *DB) Get(key Key) (val *DBItem) {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
 	val = &DBItem{}
 	tx := &Tx{
 		db: db, writable: true,
@@ -837,11 +829,52 @@ func (db *DB) Get(key Key) (val *DBItem) {
 	return val
 }
 func (db *DB) Delete(key Key) (err error) {
+	db.mu.Lock()
+	defer db.mu.Unlock()
 	tx := &Tx{
 		db: db, writable: true,
 	}
 	_, err = tx.Delete(key)
 	return err
+}
+func (db *DB) Ascend(index string,
+	iterator func(key Key, value *DBItem) bool) error {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
+	tx := &Tx{
+		db: db, writable: false,
+	}
+	return tx.scan(false, false, false, index, nil, nil, iterator)
+}
+
+func (db *DB) AscendGreaterOrEqual(index string, pivot *DBItem,
+	iterator func(key Key, value *DBItem) bool) error {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
+	tx := &Tx{
+		db: db, writable: false,
+	}
+	return tx.AscendGreaterOrEqual(index, pivot, iterator)
+}
+
+func (db *DB) AscendRange(index string, greaterOrEqual, lessThan *DBItem,
+	iterator func(key Key, value *DBItem) bool) error {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
+	tx := &Tx{
+		db: db, writable: false,
+	}
+	return tx.AscendRange(index, greaterOrEqual, lessThan, iterator)
+}
+
+func (db *DB) DescendRange(index string, greaterOrEqual, lessThan *DBItem,
+	iterator func(key Key, value *DBItem) bool) error {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
+	tx := &Tx{
+		db: db, writable: false,
+	}
+	return tx.DescendRange(index, greaterOrEqual, lessThan, iterator)
 }
 
 const lockVer uint64 = math.MaxUint64
@@ -850,38 +883,19 @@ func (db *DB) SetId(id uint32) {
 	db.id = id
 }
 
-func (db *DB) Find(key Key) *proto.DBItems {
-	result := make([]*proto.DBItem, 0)
-	stop := mvccEncode(key, 0)
-	start := mvccEncode(key, lockVer)
-	tx := &Tx{
-		db: db, writable: true,
-	}
-	tx.scanKeys(start, stop, func(dbi *DBItem) bool {
-		result = append(result, &proto.DBItem{Key: dbi.Key, Value: dbi.Val})
-		return true
-	})
-	return &proto.DBItems{Items: result}
-}
-
-func (db *DB) Ascend(index string,
-	iterator func(key Key, value *DBItem) bool) error {
-	return db.View(func(tx *Tx) error {
-		return tx.scan(false, false, false, index, nil, nil, iterator)
-	})
-}
-
-func (db *DB) GetByRange(start Key, stop Key) []*DBItem {
-	result := make([]*DBItem, 0)
-	db.managed(true, func(tx *Tx) error {
-		tx.scanKeys(start, stop, func(dbi *DBItem) bool {
-			result = append(result, dbi)
-			return true
-		})
-		return nil
-	})
-	return result
-}
+//func (db *DB) Find(key Key) *proto.DBItems {
+//	result := make([]*proto.DBItem, 0)
+//	stop := mvccEncode(key, 0)
+//	start := mvccEncode(key, lockVer)
+//	tx := &Tx{
+//		db: db, writable: true,
+//	}
+//	tx.scanKeys(start, stop, func(dbi *DBItem) bool {
+//		result = append(result, &proto.DBItem{Key: dbi.Key, Value: dbi.Val})
+//		return true
+//	})
+//	return &proto.DBItems{Items: result}
+//}
 
 func (db *DB) RecordCount() int {
 	return 0
@@ -944,7 +958,7 @@ func (db *DB) Update(fn func(tx *Tx) error) error {
 func (db *DB) get(key Key) *DBItem {
 	item := db.keys.Get(&DBItem{Key: key})
 	if item != nil {
-		return item.(*DBItem)
+		return item
 	}
 	return nil
 }
@@ -968,8 +982,8 @@ func (tx *Tx) DeleteAll() error {
 	}
 
 	// now reset the live database trees
-	tx.db.keys = btree.New(btreeDegrees, nil)
-	tx.db.exps = btree.New(btreeDegrees, &exctx{tx.db})
+	tx.db.keys = New(btreeDegrees, nil)
+	tx.db.exps = New(btreeDegrees, &exctx{tx.db})
 	tx.db.idxs = make(map[string]*index)
 
 	// finally re-create the indexes
@@ -1001,26 +1015,6 @@ func (db *DB) Begin(writable bool) (*Tx, error) {
 		return nil, ErrDatabaseClosed
 	}
 	return tx, nil
-}
-func (db *DB) AscendGreaterOrEqual(index string, pivot *DBItem,
-	iterator func(key Key, value *DBItem) bool) error {
-	return db.View(func(tx *Tx) error {
-		return tx.AscendGreaterOrEqual(index, pivot, iterator)
-	})
-}
-
-func (db *DB) AscendRange(index string, greaterOrEqual, lessThan *DBItem,
-	iterator func(key Key, value *DBItem) bool) error {
-	return db.View(func(tx *Tx) error {
-		return tx.AscendRange(index, greaterOrEqual, lessThan, iterator)
-	})
-}
-
-func (db *DB) DescendRange(index string, greaterOrEqual, lessThan *DBItem,
-	iterator func(key Key, value *DBItem) bool) error {
-	return db.View(func(tx *Tx) error {
-		return tx.DescendRange(index, greaterOrEqual, lessThan, iterator)
-	})
 }
 
 // dbItemOpts holds various meta information about an item.
@@ -1102,8 +1096,11 @@ var maxTime = time.Unix(1<<63-62135596801, 999999999)
 // to note that the ctx parameter is used to help with determine which
 // formula to use on an item. Each b-tree should use a different ctx when
 // sharing the same item.
-func (dbi *DBItem) Less(item btree.Item, ctx interface{}) bool {
-	dbi2 := item.(*DBItem)
+func (dbi *DBItem) Less(item *DBItem, ctx interface{}) bool {
+	if utils.IsNil(item) {
+		fmt.Println("buntdb-->dbitem--1109")
+	}
+	dbi2 := item
 
 	//if dbi.sortKey !=nil && dbi2.sortKey !=nil{
 	//	return bytes.Compare(dbi.sortKey, dbi2.sortKey) < 0

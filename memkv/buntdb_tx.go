@@ -1,7 +1,6 @@
 package memkv
 
 import (
-	"github.com/xp/shorttext-db/btree"
 	"sort"
 	"strings"
 	"time"
@@ -30,8 +29,8 @@ type Tx struct {
 
 type txWriteContext struct {
 	// rollback when deleteAll is called
-	rbkeys *btree.BTree      // a tree of all item ordered by key
-	rbexps *btree.BTree      // a tree of items ordered by expiration
+	rbkeys *BTree            // a tree of all item ordered by key
+	rbexps *BTree            // a tree of items ordered by expiration
 	rbidxs map[string]*index // the index trees.
 
 	rollbackItems   map[string]*DBItem // details for rolling back tx.
@@ -249,11 +248,11 @@ func (tx *Tx) scan(desc, gt, lt bool, index string, start, stop *DBItem,
 		return ErrTxClosed
 	}
 	// wrap a btree specific iterator around the user-defined iterator.
-	iter := func(item btree.Item) bool {
-		dbi := item.(*DBItem)
+	iter := func(item *DBItem) bool {
+		dbi := item
 		return iterator(dbi.Key, dbi)
 	}
-	var tr *btree.BTree
+	var tr *BTree
 	if index == "" {
 		// empty index means we will use the keys tree.
 		tr = tx.db.keys
@@ -478,14 +477,14 @@ func (tx *Tx) Delete(key Key) (val Value, err error) {
 
 func (tx *Tx) scanKeys(start Key, stop Key,
 	iterator func(*DBItem) bool) error {
-	var tr *btree.BTree
+	var tr *BTree
 	tr = tx.db.keys
 	if tx.db == nil {
 		return ErrTxClosed
 	}
 	// wrap a btree specific iterator around the user-defined iterator.
-	iter := func(item btree.Item) bool {
-		dbi := item.(*DBItem)
+	iter := func(item *DBItem) bool {
+		dbi := item
 		return iterator(dbi)
 	}
 	var itemA, itemB *DBItem

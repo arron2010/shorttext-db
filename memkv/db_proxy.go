@@ -10,8 +10,8 @@ type DBProxy struct {
 func NewDBProxy() (KVClient, error) {
 	instance := &DBProxy{}
 	//	instance.remote = NewRemoteDBProxy(server.GetNodeProxy(), collaborator.GetCollaborator())
-	instance.local = NewLocalDBProxy()
-	instance.buffer = NewLocalDBProxy()
+	instance.local = NewLocalDBProxy(1)
+	instance.buffer = NewLocalDBProxy(99)
 	instance.Locks = make(map[uint64]int)
 	return instance, nil
 }

@@ -7,7 +7,7 @@ import (
 )
 
 func TestLocalDBProxy_Scan(t *testing.T) {
-	local := NewLocalDBProxy()
+	local := NewLocalDBProxy(1)
 	var item *DBItem
 	item = &DBItem{RawKey: []byte("B5"), StartTS: 5, CommitTS: 80}
 	local.Put(item)
@@ -40,7 +40,7 @@ func TestLocalDBProxy_Scan(t *testing.T) {
 }
 
 func TestLocalDBProxy_Scan3(t *testing.T) {
-	local := NewLocalDBProxy()
+	local := NewLocalDBProxy(2)
 	var item *DBItem
 
 	item = &DBItem{RawKey: []byte{1, 2, 3, 4, 5, 6, 7}, StartTS: 7, CommitTS: 70}

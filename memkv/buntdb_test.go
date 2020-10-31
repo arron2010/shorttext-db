@@ -116,34 +116,26 @@ func TestDB_Indexes04(t *testing.T) {
 	//fmt.Println(timer.Stop())
 
 }
+func TestTree_Items(t *testing.T) {
+	//list := items{}
+	//a := &DBItem{}
+	//b := &DBItem{}
+	//list.addItems(a)
+	//list.addItems(b)
+	//fmt.Print(list.len())
 
+}
 func TestDB_Indexes05(t *testing.T) {
-	max := ^uint(0)
-	fmt.Println(max)
-	//testLoadData(t)
-	//var err error
-	//timer := NewTimer()
-	////var result string
-	//var count int
-	//const NUM = 1 * 100
-	//for i := 1; i <= NUM; i++ {
-	//	val := fmt.Sprintf(`{"Dim2":"AAA%d"}`, i)
-	//	err = gDB.View(func(tx *Tx) error {
-	//		err := tx.AscendEqual("Dim2_Dim3", val, func(key , value string) bool {
-	//
-	//			count++
-	//			//fmt.Printf("%s: %s\n", key, value)
-	//			return true
-	//		})
-	//		if err != nil {
-	//			fmt.Println(err)
-	//		}
-	//		return nil
-	//	})
-	//	if err != nil {
-	//		fmt.Println(err)
-	//	}
-	//}
-	//fmt.Println("时间花费:", timer.Stop())
-	//fmt.Println("记录数量:", count)
+	db, _ := Open(":memory:")
+	db.CreateIndex("IndexRawKey", "*", IndexRawKey)
+	db.CreateIndex("KeyIndex", "*", IndexKey)
+	for i := 1; i <= 2000; i++ {
+		str := strconv.Itoa(i)
+		db.Put(&DBItem{Key: []byte(str), RawKey: []byte(str), Val: []byte(str)})
+		db.Delete([]byte(str))
+	}
+	db.Ascend("IndexRawKey", func(key Key, value *DBItem) bool {
+		fmt.Println(string(key))
+		return true
+	})
 }
